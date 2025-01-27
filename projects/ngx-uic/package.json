@@ -1,14 +1,16 @@
 {
     "name": "ngx-uic",
     "version": "0.1.0",
-    "author": {
-        "name": "Khalil Tabakh"
-    },
+    "author": "Khalil Tabakh",
     "license": "MIT",
     "description": "A collection of reusable Angular components designed to simplify the development of user interfaces.",
+    "homepage": "https://github.com/khalil-tabakh/NgxUIC",
     "repository": {
         "type": "git",
-        "url": "https://github.com/khalil-tabakh/NgxUIC"
+        "url": "https://github.com/khalil-tabakh/NgxUIC.git"
+    },
+    "bugs": {
+        "url": "https://github.com/khalil-tabakh/NgxUIC/issues"
     },
     "keywords": ["angular", "ui", "components"],
     "peerDependencies": {
