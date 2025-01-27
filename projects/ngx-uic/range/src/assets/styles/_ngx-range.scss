@@ -1,0 +1,112 @@
+$progress: calc(var(--progress, 0) * 1%);
+
+.ngx-range {
+    --progress_color: rgba(255, 255, 255, 1);
+
+    --track_color: rgba(255, 255, 255, 0.2);
+    --track_height: 0.25rem;
+    --track_border: none;
+    --track_radius: 0;
+    --track_shadow: none;
+    --track_transform: none;
+    --track_transition: transform 200ms;
+
+    --thumb_background: var(--progress_color);
+    --thumb_height: calc(var(--track_height) * 4);
+    --thumb_width: var(--thumb_height);
+    --thumb_border: none;
+    --thumb_radius: var(--thumb_width);
+    --thumb_shadow: 0 0 0.5em -0.25rem black;
+    --thumb_transform: none;
+    --thumb_transition: transform 200ms;
+}
+
+.ngx-range {
+    position: relative;
+    box-sizing: content-box;
+    height: var(--track_height);
+    appearance: none;
+    background: none;
+    margin: 0;
+    cursor: pointer;
+
+    &::-moz-range-track {
+        height: var(--track_height);
+        border: var(--track_border);
+        border-radius: var(--track_radius);
+        background-image: linear-gradient(to right, var(--progress_color) $progress, var(--track_color) $progress);
+        box-shadow: var(--track_shadow);
+        transform: var(--track_transform);
+        transition: var(--track_transition);
+    }
+    &::-moz-range-thumb {
+        height: var(--thumb_height);
+        width: var(--thumb_width);
+        border: var(--thumb_border);
+        border-radius: var(--thumb_radius);
+        background: var(--thumb_background);
+        box-shadow: var(--thumb_shadow);
+        transform: var(--thumb_transform);
+        transition: var(--thumb_transition);
+    }
+
+    &::-webkit-slider-runnable-track {
+        height: var(--track_height);
+        border: var(--track_border);
+        border-radius: var(--track_radius);
+        background-image: linear-gradient(to right, var(--progress_color) $progress, var(--track_color) $progress);
+        box-shadow: var(--track_shadow);
+        transform: var(--track_transform);
+        transition: var(--track_transition);
+    }
+    &::-webkit-slider-thumb {
+        appearance: none;
+        position: relative;
+        top: 50%;
+        translate: 0 -50%;
+        height: var(--thumb_height);
+        width: var(--thumb_width);
+        border: var(--thumb_border);
+        border-radius: var(--thumb_radius);
+        background: var(--thumb_background);
+        box-shadow: var(--thumb_shadow);
+        transform: var(--thumb_transform);
+        transition: var(--thumb_transition);
+    }
+}
+
+.ngx-range--compact {
+    --thumb_transform: scale(0);
+
+    &::-moz-range-thumb {
+        transform-origin: $progress;
+    }
+
+    &::-webkit-slider-thumb {
+        transform-origin: $progress;
+    }
+
+    &:hover {
+        --thumb_transform: scale(1);
+    }
+}
+
+.ngx-range--overflow {
+    &::-moz-range-track {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: calc(100% - var(--thumb_width));
+    }
+    &::-moz-range-thumb {
+        transform-origin: center;
+    }
+
+    &::-webkit-slider-runnable-track {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: calc(100% - var(--thumb_width));
+    }
+    &::-webkit-slider-thumb {
+        transform-origin: center;
+    }
+}

@@ -14,3 +14,7 @@ The **NgxUIC** library is a collection of reusable Angular components designed t
 ```bash
 npm install ngx-uic
 ```
+
+## Modules
+
+- [`NgxRangeModule`](projects/ngx-uic/range/README.md)

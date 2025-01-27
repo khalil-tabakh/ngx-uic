@@ -1,6 +1,11 @@
 {
     "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
     "dest": "../../dist/ngx-uic",
+    "assets": [{
+        "input": "range/src/assets",
+        "glob": "**/*",
+        "output": "range/src/assets"
+    }],
     "lib": {
         "entryFile": "public-api.ts"
     }

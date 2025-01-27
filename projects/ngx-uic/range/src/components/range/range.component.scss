@@ -1,0 +1,136 @@
+$low: calc(var(--low) * 1%);
+$progress: calc(var(--progress) * 1%);
+$high: calc(var(--high) * 1%);
+
+:host {
+    --progress_color: rgba(255, 255, 255, 1);
+
+    --track_color: rgba(255, 255, 255, 0.2);
+    --track_height: 0.25rem;
+    --track_border: none;
+    --track_radius: 0;
+    --track_shadow: none;
+    --track_transform: none;
+    --track_transition: transform 200ms;
+
+    --thumb_background: var(--progress_color);
+    --thumb_height: calc(var(--track_height) * 4);
+    --thumb_width: var(--thumb_height);
+    --thumb_border: none;
+    --thumb_radius: var(--thumb_width);
+    --thumb_shadow: 0 0 0.5em -0.25rem black;
+    --thumb_transform: none;
+    --thumb_transition: transform 200ms;
+}
+
+:host {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.track {
+    position: absolute;
+    z-index: 1;
+    height: var(--track_height);
+    width: 100%;
+    border: var(--track_border);
+    border-radius: var(--track_radius);
+    overflow: hidden;
+    background-image: linear-gradient(
+        to right,
+        var(--track_color) $low,
+        var(--progress_color) $low,
+        var(--progress_color) $high,
+        var(--track_color) $high
+    );
+    box-shadow: var(--track_shadow);
+    transform: var(--track_transform);
+    transition: var(--track_transition);
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        height: 100%;
+        width: 100%;
+    }
+
+    &::before {
+        background-image: linear-gradient(
+            to right,
+            var(--progress_color) $progress,
+            transparent $progress
+        );
+    }
+
+    &::after {
+        background-image: linear-gradient(
+            to right,
+            transparent $progress,
+            var(--track_color) $progress
+        );
+    }
+}
+
+.slider {
+    position: relative;
+    z-index: 1;
+    height: var(--track_height);
+    width: calc(100% - var(--thumb_width));
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        translate: -50% -50%;
+        height: var(--thumb_height);
+        width: var(--thumb_width);
+        border: var(--thumb_border);
+        border-radius: var(--thumb_radius);
+        background: var(--thumb_background);
+        box-shadow: var(--thumb_shadow);
+        transform: var(--thumb_transform);
+        transition: var(--thumb_transition);
+    }
+
+    &::before {
+        left: calc(var(--low, var(--progress)) * 1%);
+    }
+
+    &::after {
+        display: var(--high, none);
+        left: $high;
+    }
+}
+
+:host.compact {
+    --thumb_transform: scale(0);
+
+    .slider {
+        &::before {
+            transform-origin: calc(var(--low, var(--progress)) * 1%);
+        }
+
+        &::after {
+            transform-origin: $high;
+        }
+    }
+
+    &:hover {
+        --thumb_transform: scale(1);
+    }
+}
+
+:host.overflow {
+    .slider {
+        width: 100%;
+
+        &::before,
+        &::after {
+            transform-origin: center;
+        }
+    }
+}

@@ -28,7 +28,8 @@
                     "builder": "@angular-devkit/build-angular:karma",
                     "options": {
                         "tsConfig": "projects/ngx-uic/tsconfig.spec.json",
-                        "polyfills": []
+                        "polyfills": [],
+                        "codeCoverage": true
                     }
                 }
             }
