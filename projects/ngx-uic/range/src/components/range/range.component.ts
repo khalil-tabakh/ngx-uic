@@ -58,13 +58,13 @@ export class NgxRangeComponent {
         }
     });
 
-    private setValue(percentage: number, thumb: '::before' | '::after'): void {
+    private setValue(percentage: number, thumb: string): void {
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
         const rounded = this.step() ? Math.round(mapped / this.step()) * this.step() : mapped;
-        if (thumb === '::before') this.lowest.set(rounded);
-        if (thumb === '::after') this.highest.set(rounded);
+        if (thumb === 'first') this.lowest.set(rounded);
+        if (thumb === 'last') this.highest.set(rounded);
 
         const event: RangeChange = this.type() === 'simple'
             ? { value: this.highest() }
@@ -75,31 +75,29 @@ export class NgxRangeComponent {
 
     @HostListener('pointerdown', ['$event'])
     private onSliding(event: PointerEvent): void {
-        const slider = this.elementRef.nativeElement.children.item(1)!;
-        const sliderStyle = getComputedStyle(slider);
-        const sliderWidth = parseFloat(sliderStyle.width);
-        
-        const thumb1Style = getComputedStyle(slider, '::before');
-        const thumb2Style = getComputedStyle(slider, '::after');
-        let thumb: '::before' | '::after' = '::after';
-        if (this.type() === 'double') {
-            const thumb1X = parseFloat(thumb1Style.left);
-            const thumb2X = parseFloat(thumb2Style.left);
-            thumb = Math.abs(event.offsetX - thumb1X) < Math.abs(event.offsetX - thumb2X) ? '::before' : '::after';
-        };
-        const percentage = event.offsetX / sliderWidth * 100;
-        this.setValue(percentage, thumb);
+        const range = this.elementRef.nativeElement;
+        const track = range.getElementsByClassName('track')[0];
+        const slider = range.getElementsByClassName('slider')[0] as HTMLElement;
+        const thumbs = slider.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
+
+        let thumb = Math.abs(event.offsetX - thumbs[0].offsetLeft) < Math.abs(event.offsetX - thumbs[1].offsetLeft) ? 'first' : 'last';
+        if (event.target === thumbs[0]) thumb = 'first';
+        if (event.target === thumbs[1] || this.type() === 'simple') thumb = 'last';
+        if (event.target === slider || event.target === track) {
+            const percentage = event.offsetX / slider.scrollWidth * 100;
+            this.setValue(percentage, thumb);
+        }
 
         slider.setPointerCapture(event.pointerId);
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
-            if (event.offsetX < parseFloat(thumb1Style.left)) thumb = '::before';
-            if (event.offsetX > parseFloat(thumb2Style.left)) thumb = '::after';
-            const percentage = event.offsetX / sliderWidth * 100;
+            if (event.offsetX < thumbs[0].offsetLeft) thumb = 'first';
+            if (event.offsetX > thumbs[1].offsetLeft) thumb = 'last';
+            const percentage = event.offsetX / slider.scrollWidth * 100;
             this.setValue(percentage, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
-            onPointerMove();
             onPointerUp();
+            onPointerMove();
         });
     }
 }

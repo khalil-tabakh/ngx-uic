@@ -63,9 +63,7 @@ $high: calc(var(--high, 0) * 1%);
     height: var(--track_height);
     width: calc(100% - var(--thumb_width));
 
-    &::before,
-    &::after {
-        content: "";
+    .thumb {
         position: absolute;
         top: 50%;
         translate: -50% -50%;
@@ -77,27 +75,27 @@ $high: calc(var(--high, 0) * 1%);
         box-shadow: var(--thumb_shadow);
         transform: var(--thumb_transform);
         transition: var(--thumb_transition);
-    }
 
-    &::before {
-        display: var(--low, none);
-        left: $low;
-    }
+        &:first-child {
+            display: var(--low, none);
+            left: $low;
+        }
 
-    &::after {
-        left: $high;
+        &:last-child {
+            left: $high;
+        }
     }
 }
 
 :host.compact {
     --thumb_transform: scale(0);
 
-    .slider {
-        &::before {
+    .slider .thumb {
+        &:first-child {
             transform-origin: $low;
         }
 
-        &::after {
+        &:last-child {
             transform-origin: $high;
         }
     }
@@ -111,8 +109,7 @@ $high: calc(var(--high, 0) * 1%);
     .slider {
         width: 100%;
 
-        &::before,
-        &::after {
+        .thumb {
             transform-origin: center;
         }
     }
