@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, computed, effect, inject, input, model, output } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, computed, effect, inject, input, linkedSignal, output } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -16,48 +16,60 @@ export class NgxRangeComponent {
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
-    readonly min = input(0);
-    readonly step = input(1);
-    readonly max = input(100);
+    readonly min = input(0, { transform: (value: number | string) => isNaN(Number(value)) ? 0 : Number(value) });
+    readonly lower = input(25, { transform: (value: number | string) => isNaN(Number(value)) ? 25 : Number(value) });
+    readonly value = input(50, { transform: (value: number | string) => isNaN(Number(value)) ? 50 : Number(value) });
+    readonly upper = input(75, { transform: (value: number | string) => isNaN(Number(value)) ? 75 : Number(value) });
+    readonly max = input(100, { transform: (value: number | string) => isNaN(Number(value)) ? 100 : Number(value) });
+    readonly step = input(1, { transform: (value: number | string) => isNaN(Number(value)) ? 1 : Number(value) });
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
-    
-    readonly lower = model(this.min());
-    readonly value = model(this.min());
-    readonly upper = model(this.max());
 
-    private low = computed(() => (this.lower() - this.min()) / (this.max() - this.min()) * 100);
-    private progress = computed(() => (this.value() - this.min()) / (this.max() - this.min()) * 100);
-    private high = computed(() => (this.upper() - this.min()) / (this.max() - this.min()) * 100);
+    private lowest = linkedSignal({
+        source: () => ({ min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
+        computation: ({ min, step, max, lower }) => {
+            const mapped = lower < min || lower > max ? min : lower;
+            const rounded = step ? Math.round(mapped / this.step()) * this.step() : mapped;
+            return rounded;
+        }
+    });
+    private highest = linkedSignal({
+        source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), value: this.value(), upper: this.upper() }),
+        computation: ({ type, min, step, max, value, upper }) => {
+            let mapped = type === 'simple' ? value : upper;
+            if (mapped < min) mapped = min;
+            if (mapped > max) mapped = max;
+            const rounded = step ? Math.round(mapped / this.step()) * this.step() : mapped;
+            return rounded;
+        }
+    });
+
+    private low = computed(() => (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
+    private high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
 
     private setStyle$ = effect(() => {
         if (this.type() === 'simple') {
             this.elementRef.nativeElement.style.removeProperty('--low');
-            this.elementRef.nativeElement.style.removeProperty('--high');
-            this.elementRef.nativeElement.style.setProperty('--progress', String(this.progress()));
+            this.elementRef.nativeElement.style.setProperty('--high', String(this.high()));
         } else {
-            this.elementRef.nativeElement.style.removeProperty('--progress');
             this.elementRef.nativeElement.style.setProperty('--low', String(this.low()));
             this.elementRef.nativeElement.style.setProperty('--high', String(this.high()));
         }
     });
 
-    private setValue(percentage: number, thumb?: '::before' | '::after'): void {
+    private setValue(percentage: number, thumb: '::before' | '::after'): void {
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
         const rounded = this.step() ? Math.round(mapped / this.step()) * this.step() : mapped;
-        if (thumb === '::before') this.lower.set(rounded);
+        if (thumb === '::before') this.lowest.set(rounded);
+        if (thumb === '::after') this.highest.set(rounded);
 
-        if (thumb === undefined) this.value.set(rounded);
-        if (thumb === '::after') this.upper.set(rounded);
-        this.change.emit(this.type() === 'simple' ? { 
-            value: this.value(),
-        } : {
-            lower: this.lower(),
-            upper: this.upper()
-        });
+        const event: RangeChange = this.type() === 'simple'
+            ? { value: this.highest() }
+            : { lower: this.lowest(), upper: this.highest() };
+        this.change.emit(event);
         this.input.emit(rounded);
     }
 
@@ -69,19 +81,19 @@ export class NgxRangeComponent {
         
         const thumb1Style = getComputedStyle(slider, '::before');
         const thumb2Style = getComputedStyle(slider, '::after');
-        const closestThumb = (offsetX: number) => {
-            if (this.type() === 'simple') return;
+        let thumb: '::before' | '::after' = '::after';
+        if (this.type() === 'double') {
             const thumb1X = parseFloat(thumb1Style.left);
             const thumb2X = parseFloat(thumb2Style.left);
-            return Math.abs(offsetX - thumb1X) < Math.abs(offsetX - thumb2X) ? '::before' : '::after';
-        }
-        const thumb = closestThumb(event.offsetX);
+            thumb = Math.abs(event.offsetX - thumb1X) < Math.abs(event.offsetX - thumb2X) ? '::before' : '::after';
+        };
         const percentage = event.offsetX / sliderWidth * 100;
         this.setValue(percentage, thumb);
 
         slider.setPointerCapture(event.pointerId);
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
-            const thumb = closestThumb(event.offsetX);
+            if (event.offsetX < parseFloat(thumb1Style.left)) thumb = '::before';
+            if (event.offsetX > parseFloat(thumb2Style.left)) thumb = '::after';
             const percentage = event.offsetX / sliderWidth * 100;
             this.setValue(percentage, thumb);
         });
