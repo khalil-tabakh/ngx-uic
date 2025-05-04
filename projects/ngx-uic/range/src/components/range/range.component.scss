@@ -3,26 +3,9 @@ $high: calc(var(--high, 0) * 1%);
 
 :host {
     --progress_color: rgba(255, 255, 255, 1);
-    --progress_border: none;
-    --progress_radius: 0;
-    --progress_shadow: none;
-
-    --track_color: rgba(255, 255, 255, 0.2);
     --track_height: 0.25rem;
-    --track_border: none;
-    --track_radius: 0;
-    --track_shadow: none;
-    --track_transform: none;
-    --track_transition: transform 200ms;
-
-    --thumb_color: var(--progress_color);
     --thumb_height: calc(var(--track_height) * 4);
     --thumb_width: var(--thumb_height);
-    --thumb_border: none;
-    --thumb_radius: var(--thumb_width);
-    --thumb_shadow: 0 0 0.5em -0.25rem black;
-    --thumb_transform: none;
-    --thumb_transition: transform 200ms;
 }
 
 :host {
@@ -36,23 +19,14 @@ $high: calc(var(--high, 0) * 1%);
     position: relative;
     height: var(--track_height);
     width: 100%;
-    border: var(--track_border);
-    border-radius: var(--track_radius);
-    overflow: hidden;
-    background: var(--track_color);
-    box-shadow: var(--track_shadow);
-    transform: var(--track_transform);
-    transition: var(--track_transition);
+    background: rgba(255, 255, 255, 0.2);
 
     &::before {
         content: "";
         position: absolute;
         height: 100%;
         width: 100%;
-        border: var(--progress_border);
-        border-radius: var(--progress_radius);
         background: var(--progress_color);
-        box-shadow: var(--progress_shadow);
         transform-origin: left;
         transform: translateX($low) scaleX(calc($high - $low));
     }
@@ -69,12 +43,9 @@ $high: calc(var(--high, 0) * 1%);
         translate: -50% -50%;
         height: var(--thumb_height);
         width: var(--thumb_width);
-        border: var(--thumb_border);
-        border-radius: var(--thumb_radius);
-        background: var(--thumb_color);
-        box-shadow: var(--thumb_shadow);
-        transform: var(--thumb_transform);
-        transition: var(--thumb_transition);
+        border-radius: var(--thumb_width);
+        background: var(--progress_color);
+        box-shadow: 0 0 0.5em -0.25rem black;
 
         &:first-child {
             display: var(--low, none);
@@ -83,34 +54,6 @@ $high: calc(var(--high, 0) * 1%);
 
         &:last-child {
             left: $high;
-        }
-    }
-}
-
-:host.compact {
-    --thumb_transform: scale(0);
-
-    .slider .thumb {
-        &:first-child {
-            transform-origin: $low;
-        }
-
-        &:last-child {
-            transform-origin: $high;
-        }
-    }
-
-    &:hover {
-        --thumb_transform: scale(1);
-    }
-}
-
-:host.overflow {
-    .slider {
-        width: 100%;
-
-        .thumb {
-            transform-origin: center;
         }
     }
 }
