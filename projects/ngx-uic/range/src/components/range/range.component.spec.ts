@@ -32,9 +32,9 @@ describe('NgxRangeComponent', () => {
     });
 
     it('should display the correct number of thumbs', () => {
-        const slider = document.querySelector('.slider') as HTMLElement;
-        const tumb1Style = getComputedStyle(slider, '::before');
-        const tumb2Style = getComputedStyle(slider, '::after');
+        const thumbs = fixture.nativeElement.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
+        const tumb1Style = getComputedStyle(thumbs[0]);
+        const tumb2Style = getComputedStyle(thumbs[1]);
         fixture.componentRef.setInput('type', 'simple');
         fixture.detectChanges();
         expect(tumb1Style.getPropertyValue('display')).not.toBe('none');
@@ -46,15 +46,16 @@ describe('NgxRangeComponent', () => {
     });
 
     it('should compute the correct percentage values', () => {
-        fixture.componentRef.setInput('min', 20);
-        fixture.componentRef.setInput('max', 40);
         fixture.componentRef.setInput('type', 'simple');
-        component.value.set(30);
+        fixture.componentRef.setInput('min', 20);
+        fixture.componentRef.setInput('value', 30);
+        fixture.componentRef.setInput('max', 40);
         // @ts-ignore
-        expect(component.progress()).toBe(50);
+        expect(component.high()).toBe(50);
         fixture.componentRef.setInput('type', 'double');
-        component.lower.set(25);
-        component.upper.set(35);
+        fixture.componentRef.setInput('lower', 25);
+        fixture.componentRef.setInput('upper', 35);
+        fixture.detectChanges();
         // @ts-ignore
         expect(component.low()).toBe(25);
         // @ts-ignore
@@ -62,16 +63,20 @@ describe('NgxRangeComponent', () => {
     });
 
     it('should update styles when the value changes', () => {
-        const slider = document.querySelector('.slider') as HTMLElement;
+        const slider = fixture.nativeElement.getElementsByClassName('slider')[0] as HTMLElement;
         const sliderStyle = getComputedStyle(slider);
-        const tumbStyle = getComputedStyle(slider, '::before');
+        const thumbs = slider.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
+        const tumb1Style = getComputedStyle(thumbs[0]);
+        const tumb2Style = getComputedStyle(thumbs[1]);
         fixture.detectChanges();
-        expect(fixture.nativeElement.style.getPropertyValue('--progress')).toBe('0');
-        expect(parseFloat(tumbStyle.left)).toBe(0);
-        component.value.set(25);
+        expect(fixture.nativeElement.style.getPropertyValue('--high')).toBe('0');
+        expect(parseFloat(tumb1Style.left)).toBe(0);
+        expect(parseFloat(tumb2Style.left)).toBe(0);
+        fixture.componentRef.setInput('value', 25);
         fixture.detectChanges();
-        expect(fixture.nativeElement.style.getPropertyValue('--progress')).toBe('25');
-        expect(parseFloat(tumbStyle.left)).toBe(parseFloat(sliderStyle.width) / 4);
+        expect(fixture.nativeElement.style.getPropertyValue('--high')).toBe('25');
+        expect(parseFloat(tumb1Style.left)).toBe(0);
+        expect(parseFloat(tumb2Style.left)).toBe(parseFloat(sliderStyle.width) / 4);
     });
 
     it('should set the value within bounds', () => {
@@ -114,10 +119,10 @@ describe('NgxRangeComponent', () => {
         expect(component.change.emit).toHaveBeenCalledWith({ value: 50 });
         fixture.componentRef.setInput('type', 'double');
         // @ts-ignore
-        component.setValue(25, '::before');
+        component.setValue(25, 'first');
         expect(component.change.emit).toHaveBeenCalledWith({ lower: 25, upper: component.max() });
         // @ts-ignore
-        component.setValue(75, '::after');
+        component.setValue(75, 'last');
         expect(component.change.emit).toHaveBeenCalledWith({ lower: 25, upper: 75 });
     });
 
@@ -129,10 +134,16 @@ describe('NgxRangeComponent', () => {
         expect(component.input.emit).toHaveBeenCalledWith(50);
         fixture.componentRef.setInput('type', 'double');
         // @ts-ignore
-        component.setValue(25, '::before');
+        component.setValue(25, 'first');
         expect(component.input.emit).toHaveBeenCalledWith(25);
         // @ts-ignore
-        component.setValue(75, '::after');
+        component.setValue(75, 'last');
         expect(component.input.emit).toHaveBeenCalledWith(75);
+    });
+
+    it('should display marks', () => {
+        fixture.componentRef.setInput('marks', true);
+        const marks = fixture.nativeElement.getElementsByClassName('mark') as HTMLCollectionOf<HTMLElement>;
+        expect(marks.length).toBe(101);
     });
 });

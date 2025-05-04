@@ -1,5 +1,11 @@
 <div class="track"></div>
 <div class="slider">
-    <span class="thumb"></span>
-    <span class="thumb"></span>
+    <div class="thumb"></div>
+    @if (marks()) {
+        @let marks = (max() - min()) / step() + 1;
+        @for (mark of [].constructor(marks); track $index) {
+            <div class="mark"></div>
+        }
+    }
+    <div class="thumb"></div>
 </div>

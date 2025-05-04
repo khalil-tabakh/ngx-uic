@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, computed, effect, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, effect, inject, input, linkedSignal, output } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -22,6 +22,7 @@ export class NgxRangeComponent {
     readonly upper = input(75, { transform: (value: number | string) => isNaN(Number(value)) ? 75 : Number(value) });
     readonly max = input(100, { transform: (value: number | string) => isNaN(Number(value)) ? 100 : Number(value) });
     readonly step = input(1, { transform: (value: number | string) => isNaN(Number(value)) ? 1 : Number(value) });
+    readonly marks = input(false, { transform: booleanAttribute });
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
