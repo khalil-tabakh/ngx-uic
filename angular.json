@@ -23,16 +23,27 @@
                         }
                     },
                     "defaultConfiguration": "production"
-                },
+                }
+            }
+        },
+        "range": {
+            "projectType": "library",
+            "root": "projects/ngx-uic/range",
+            "sourceRoot": "projects/ngx-uic/range/src",
+            "prefix": "ngx",
+            "architect": {
                 "test": {
                     "builder": "@angular-devkit/build-angular:karma",
                     "options": {
-                        "tsConfig": "projects/ngx-uic/tsconfig.spec.json",
+                        "tsConfig": "projects/ngx-uic/range/tsconfig.spec.json",
                         "polyfills": [],
                         "codeCoverage": true
                     }
                 }
             }
         }
+    },
+    "cli": {
+        "analytics": false
     }
 }
