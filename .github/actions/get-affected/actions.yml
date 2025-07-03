@@ -1,0 +1,73 @@
+name: Get affected projects
+description: Get affected projects from a pull request by their defined architect target.
+
+inputs:
+  file:
+    description: Path to angular.json
+    required: false
+  pr:
+    description: Pull request number
+    required: true
+  target:
+    description: Architect target
+    required: true
+  token:
+    description: Github token
+    required: true
+
+outputs:
+  affected:
+    description: List of affected projects filtered by their architect target.
+    value: ${{ steps.get_projects.outputs.projects }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
+
+  - name: Get affected projects from PR files
+    id: get_affected
+    env:
+      GH_TOKEN: ${{ inputs.token }}
+      PR_NUMBER: ${{ inputs.pr }}
+    shell: bash
+    run: |
+      affected=$(gh pr view "$PR_NUMBER" --json files --jq '
+        [.files[].path] |
+        unique |
+        join(" ")')
+      echo "affected=$affected" >> "$GITHUB_OUTPUT"
+
+  - name: Get defined projects from angular.json
+    id: get_defined
+    env:
+      FILE: ${{ inputs.file }}
+      TARGET: ${{ inputs.target }}
+    shell: bash
+    run: |
+      default=$(find . -name angular.json | head -1)
+      file=${FILE:-$default}
+      defined=$(jq -r --arg target "$TARGET" '
+        .projects |
+        to_entries |
+        map(select(.value.architect[$target] != null)) |
+        map(.value.root) |
+        join(" ")' "$file")
+      echo "defined=$defined" >> "$GITHUB_OUTPUT"
+
+  - name: Filter affected projects
+    id: get_projects
+    env:
+      AFFECTED: ${{ steps.get_affected.outputs.affected }}
+      DEFINED: ${{ steps.get_defined.outputs.defined }}
+    shell: bash
+    run: |
+      projects=""
+      for project in $DEFINED; do
+        if [[ "$AFFECTED" == *"$project"* ]]; then
+          projects="$projects ${project##*/}"
+        fi
+      done
+      projects=$(echo "$projects" | xargs)
+      echo "projects=$projects" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        type: number
+        required: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup dependencies
+      uses: ./.github/actions/setup-dependencies
+
+    - name: Setup browser
+      uses: ./.github/actions/setup-browser
+
+  build:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup dependencies
+      uses: ./.github/actions/setup-dependencies
+
+    - name: Build library
+      run: npx ng build ngx-uic
+
+  test:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup dependencies
+      uses: ./.github/actions/setup-dependencies
+
+    - name: Setup browser
+      uses: ./.github/actions/setup-browser
+
+    - name: Get testable projects
+      id: testable
+      uses: ./.github/actions/get-affected
+      with:
+        pr: ${{ github.event.pull_request.number || github.event.inputs.pr }}
+        target: test
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run tests for each testable project
+      if: steps.testable.outputs.affected != ''
+      env:
+        TESTABLE: ${{ steps.testable.outputs.affected }}
+      run: |
+        fail=0
+        for project in $TESTABLE; do
+          echo "🧪 Running tests for $project"
+          if npx ng test "$project" --no-watch --code-coverage --browsers=ChromeHeadless; then
+              echo "✅ Tests passed for $project"
+          else
+              echo "❌ Tests failed for $project"
+              fail=1
+          fi
+        done
+        exit $fail

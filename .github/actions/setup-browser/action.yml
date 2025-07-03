@@ -1,0 +1,25 @@
+name: Setup browser
+description: Install and cache browser
+
+runs:
+  using: "composite"
+  steps:
+  - name: Cache browser
+    id: cache
+    uses: actions/cache@v4
+    with:
+      path: /usr/bin/google-chrome-stable
+      key: ${{ runner.os }}-google-chrome-stable
+      restore-keys: ${{ runner.os }}-google-chrome-
+
+  - name: Install browser
+    if: steps.cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      sudo dpkg -i google-chrome-stable_current_amd64.deb
+      sudo apt -f install
+
+  - name: Set CHROME_BIN
+    shell: bash
+    run: echo "CHROME_BIN=$(which google-chrome-stable)" >> "$GITHUB_ENV"
