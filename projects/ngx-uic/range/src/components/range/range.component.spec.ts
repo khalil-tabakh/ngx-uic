@@ -1,5 +1,5 @@
 // Angular
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 // Lib
 import { NgxRangeComponent } from './range.component';
@@ -11,7 +11,7 @@ describe('NgxRangeComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [NgxRangeComponent],
-            providers: [provideExperimentalZonelessChangeDetection()]
+            providers: [provideZonelessChangeDetection()]
         }).compileComponents();
 
         fixture = TestBed.createComponent(NgxRangeComponent);
