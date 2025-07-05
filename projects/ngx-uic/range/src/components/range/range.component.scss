@@ -50,6 +50,7 @@ $high: calc(var(--high, 0) * 1%);
         border-radius: var(--thumb_width);
         background: var(--progress_color);
         box-shadow: 0 0 0.5em -0.25rem black;
+        cursor: grab;
 
         &:first-child {
             display: var(--low, none);

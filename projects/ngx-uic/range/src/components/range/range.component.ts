@@ -80,6 +80,9 @@ export class NgxRangeComponent {
         }
 
         slider.setPointerCapture(event.pointerId);
+        this.renderer.setStyle(slider, 'cursor', 'grabbing');
+        this.renderer.setStyle(thumbs[0], 'cursor', 'grabbing');
+        this.renderer.setStyle(thumbs[1], 'cursor', 'grabbing');
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = 'first';
             if (event.offsetX > thumbs[1].offsetLeft) thumb = 'last';
@@ -87,8 +90,11 @@ export class NgxRangeComponent {
             this.setValue(percentage, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
-            onPointerUp();
+            this.renderer.setStyle(slider, 'cursor', 'pointer');
+            this.renderer.setStyle(thumbs[0], 'cursor', 'grab');
+            this.renderer.setStyle(thumbs[1], 'cursor', 'grab');
             onPointerMove();
+            onPointerUp();
         });
     }
 }
