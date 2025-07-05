@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, effect, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -46,18 +46,8 @@ export class NgxRangeComponent {
         }
     });
 
-    private low = computed(() => (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
-    private high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
-
-    private setStyle$ = effect(() => {
-        if (this.type() === 'simple') {
-            this.elementRef.nativeElement.style.removeProperty('--low');
-            this.elementRef.nativeElement.style.setProperty('--high', String(this.high()));
-        } else {
-            this.elementRef.nativeElement.style.setProperty('--low', String(this.low()));
-            this.elementRef.nativeElement.style.setProperty('--high', String(this.high()));
-        }
-    });
+    protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
+    protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
 
     private setValue(percentage: number, thumb: string): void {
         if (percentage < 0) percentage = 0;

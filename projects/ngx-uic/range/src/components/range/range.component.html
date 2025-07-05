@@ -1,11 +1,11 @@
-<div class="track"></div>
+<div class="track" [style.--low]="low()" [style.--high]="high()"></div>
 <div class="slider">
-    <div class="thumb"></div>
+    <div class="thumb" [style.--low]="low()"></div>
     @if (marks()) {
         @let marks = (max() - min()) / step() + 1;
         @for (mark of [].constructor(marks); track $index) {
             <div class="mark"></div>
         }
     }
-    <div class="thumb"></div>
+    <div class="thumb" [style.--high]="high()"></div>
 </div>
