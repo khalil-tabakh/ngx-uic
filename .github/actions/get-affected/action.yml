@@ -26,6 +26,11 @@ runs:
   - name: Checkout code
     uses: actions/checkout@v4
 
+  - name: Deepen history
+    if: github.event_name != 'pull_request'
+    shell: bash
+    run: git fetch --unshallow
+
   - name: Get affected projects from PR files
     id: get_affected
     env:
