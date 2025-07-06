@@ -14,6 +14,7 @@ $high: calc(var(--high, 0) * 1%);
     display: flex;
     width: 10rem;
     justify-content: center;
+    align-items: center;
     cursor: pointer;
 }
 
