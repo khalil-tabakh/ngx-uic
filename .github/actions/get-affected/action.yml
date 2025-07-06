@@ -7,7 +7,7 @@ inputs:
     required: false
   pr:
     description: Pull request number
-    required: true
+    required: false
   target:
     description: Architect target
     required: true
@@ -31,12 +31,15 @@ runs:
     env:
       GH_TOKEN: ${{ inputs.token }}
       PR_NUMBER: ${{ inputs.pr }}
+      PREVIOUS_COMMIT: ${{ github.event.before }}
+      NEXT_COMMIT: ${{ github.sha }}
     shell: bash
     run: |
-      affected=$(gh pr view "$PR_NUMBER" --json files --jq '
-        [.files[].path] |
-        unique |
-        join(" ")')
+      if [[ -n "$PR_NUMBER" ]]; then
+        affected=$(gh pr view "$PR_NUMBER" --json files --jq '[.files[].path] | unique | join(" ")')
+      else
+        affected=$(git diff --name-only "$PREVIOUS_COMMIT" "$NEXT_COMMIT" | tr '\n' ' ')
+      fi
       echo "affected=$affected" >> "$GITHUB_OUTPUT"
 
   - name: Get defined projects from angular.json
