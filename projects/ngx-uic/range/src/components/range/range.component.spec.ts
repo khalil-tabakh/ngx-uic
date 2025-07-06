@@ -7,6 +7,7 @@ import { NgxRangeComponent } from './range.component';
 describe('NgxRangeComponent', () => {
     let component: NgxRangeComponent;
     let fixture: ComponentFixture<NgxRangeComponent>;
+    let thumbs: HTMLElement[];
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -16,6 +17,8 @@ describe('NgxRangeComponent', () => {
 
         fixture = TestBed.createComponent(NgxRangeComponent);
         component = fixture.componentInstance;
+        // @ts-ignore
+        thumbs = component.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
     });
 
     it('should create the component', () => {
@@ -32,13 +35,12 @@ describe('NgxRangeComponent', () => {
     });
 
     it('should display the correct number of thumbs', () => {
-        const thumbs = fixture.nativeElement.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
         const tumb1Style = getComputedStyle(thumbs[0]);
         const tumb2Style = getComputedStyle(thumbs[1]);
         fixture.componentRef.setInput('type', 'simple');
         fixture.detectChanges();
-        expect(tumb1Style.getPropertyValue('display')).not.toBe('none');
-        expect(tumb2Style.getPropertyValue('display')).toBe('none');
+        expect(tumb1Style.getPropertyValue('display')).toBe('none');
+        expect(tumb2Style.getPropertyValue('display')).not.toBe('none');
         fixture.componentRef.setInput('type', 'double');
         fixture.detectChanges();
         expect(tumb1Style.getPropertyValue('display')).not.toBe('none');
@@ -64,66 +66,70 @@ describe('NgxRangeComponent', () => {
 
     it('should update styles when the value changes', () => {
         const slider = fixture.nativeElement.getElementsByClassName('slider')[0] as HTMLElement;
-        const sliderStyle = getComputedStyle(slider);
-        const thumbs = slider.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
+        const sliderWidth = parseFloat(getComputedStyle(slider).width);
         const tumb1Style = getComputedStyle(thumbs[0]);
         const tumb2Style = getComputedStyle(thumbs[1]);
         fixture.detectChanges();
-        expect(fixture.nativeElement.style.getPropertyValue('--high')).toBe('0');
         expect(parseFloat(tumb1Style.left)).toBe(0);
-        expect(parseFloat(tumb2Style.left)).toBe(0);
+        expect(parseFloat(tumb2Style.left)).toBe(sliderWidth / 2);
         fixture.componentRef.setInput('value', 25);
         fixture.detectChanges();
-        expect(fixture.nativeElement.style.getPropertyValue('--high')).toBe('25');
         expect(parseFloat(tumb1Style.left)).toBe(0);
-        expect(parseFloat(tumb2Style.left)).toBe(parseFloat(sliderStyle.width) / 4);
+        expect(parseFloat(tumb2Style.left)).toBe(sliderWidth / 4);
     });
 
     it('should set the value within bounds', () => {
         // @ts-ignore
-        component.setValue(120);
-        expect(component.value()).toBe(100);
+        component.setValue(120, thumbs[1]);
         // @ts-ignore
-        component.setValue(-10);
-        expect(component.value()).toBe(0);
+        expect(component.highest()).toBe(100);
         // @ts-ignore
-        component.setValue(50);
-        expect(component.value()).toBe(50);
+        component.setValue(-10, thumbs[1]);
+        // @ts-ignore
+        expect(component.highest()).toBe(0);
+        // @ts-ignore
+        component.setValue(50, thumbs[1]);
+        // @ts-ignore
+        expect(component.highest()).toBe(50);
     });
 
     it('should allow any value when setting "step" to 0', () => {
         fixture.componentRef.setInput('step', 0); // Allows any value
         // @ts-ignore
-        component.setValue(42);
-        expect(component.value()).toBe(42);
+        component.setValue(42, thumbs[1]);
         // @ts-ignore
-        component.setValue(43.5);
-        expect(component.value()).toBe(43.5);
+        expect(component.highest()).toBe(42);
+        // @ts-ignore
+        component.setValue(43.5, thumbs[1]);
+        // @ts-ignore
+        expect(component.highest()).toBe(43.5);
     });
 
     it('should constraint values to be mutliple of "step"', () => {
         fixture.componentRef.setInput('step', 5);
         // @ts-ignore
-        component.setValue(42);
-        expect(component.value()).toBe(40);
+        component.setValue(42, thumbs[1]);
         // @ts-ignore
-        component.setValue(43.5);
-        expect(component.value()).toBe(45);
+        expect(component.highest()).toBe(40);
+        // @ts-ignore
+        component.setValue(43.5, thumbs[1]);
+        // @ts-ignore
+        expect(component.highest()).toBe(45);
     });
 
     it('should emit correct change event', () => {
         spyOn(component.change, 'emit');
         fixture.componentRef.setInput('type', 'simple');
         // @ts-ignore
-        component.setValue(50);
+        component.setValue(50, thumbs[1]);
         expect(component.change.emit).toHaveBeenCalledWith({ value: 50 });
         fixture.componentRef.setInput('type', 'double');
         // @ts-ignore
-        component.setValue(25, 'first');
-        expect(component.change.emit).toHaveBeenCalledWith({ lower: 25, upper: component.max() });
+        component.setValue(30, thumbs[0]);
+        expect(component.change.emit).toHaveBeenCalledWith({ lower: 30, upper: 75 });
         // @ts-ignore
-        component.setValue(75, 'last');
-        expect(component.change.emit).toHaveBeenCalledWith({ lower: 25, upper: 75 });
+        component.setValue(70, thumbs[1]);
+        expect(component.change.emit).toHaveBeenCalledWith({ lower: 30, upper: 70 });
     });
 
     it('should emit correct input event', () => {
@@ -143,6 +149,7 @@ describe('NgxRangeComponent', () => {
 
     it('should display marks', () => {
         fixture.componentRef.setInput('marks', true);
+        fixture.detectChanges();
         const marks = fixture.nativeElement.getElementsByClassName('mark') as HTMLCollectionOf<HTMLElement>;
         expect(marks.length).toBe(101);
     });
