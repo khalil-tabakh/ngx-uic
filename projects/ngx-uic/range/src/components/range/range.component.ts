@@ -77,7 +77,7 @@ export class NgxRangeComponent {
         if (event.target === thumbs[0]) thumb = thumbs[0];
         if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
         if (event.target === slider || event.target === track) {
-            const percentage = event.offsetX / slider.scrollWidth * 100;
+            const percentage = event.offsetX / slider.offsetWidth * 100;
             this.setValue(percentage, thumb);
         }
 
@@ -88,7 +88,7 @@ export class NgxRangeComponent {
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
             if (event.offsetX > thumbs[1].offsetLeft) thumb = thumbs[1];
-            const percentage = event.offsetX / slider.scrollWidth * 100;
+            const percentage = event.offsetX / slider.offsetWidth * 100;
             this.setValue(percentage, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
