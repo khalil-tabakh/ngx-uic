@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, afterRenderEffect, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, Renderer2, afterRenderEffect, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -9,7 +9,8 @@ import { RangeType } from '../../models/range-type.model';
     selector: 'ngx-range',
     imports: [CommonModule],
     templateUrl: './range.component.html',
-    styleUrl: './range.component.scss'
+    styleUrl: './range.component.scss',
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
     private renderer = inject(Renderer2);
