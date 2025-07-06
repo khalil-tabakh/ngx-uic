@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, afterRenderEffect, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -26,6 +26,7 @@ export class NgxRangeComponent {
     readonly change = output<RangeChange>();
     readonly input = output<number>();
 
+    private readonly markRefs = viewChildren<ElementRef<HTMLElement>>('markRef');
     private readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
     private readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
     private readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
@@ -51,6 +52,25 @@ export class NgxRangeComponent {
 
     protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
     protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
+
+    private updateMarksColor = afterRenderEffect(() => {
+        this.lowest();
+        this.highest();
+        this.markRefs().map((markRef) => markRef.nativeElement).forEach((mark) => {
+            switch (true) {
+                case mark.offsetLeft > this.thumbRefs()[1].nativeElement.offsetLeft:
+                    mark.style.background = 'var(--mark_color_upper, var(--mark_color))';
+                    break;
+                case mark.offsetLeft < this.thumbRefs()[1].nativeElement.offsetLeft && this.type() === 'simple':
+                case mark.offsetLeft < this.thumbRefs()[0].nativeElement.offsetLeft:
+                    mark.style.background = 'var(--mark_color_lower, var(--mark_color))';
+                    break;
+                default:
+                    mark.style.background = 'var(--mark_color)';
+                    break;
+            }
+        });
+    });
 
     private setValue(offsetX: number, thumb: HTMLElement): void {
         let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;

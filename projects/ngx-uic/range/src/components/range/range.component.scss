@@ -6,6 +6,7 @@ $high: calc(var(--high, 0) * 1%);
     --track_height: 0.25rem;
     --thumb_height: calc(var(--track_height) * 4);
     --thumb_width: var(--thumb_height);
+    --mark_color: gray;
 }
 
 :host {
@@ -66,6 +67,6 @@ $high: calc(var(--high, 0) * 1%);
         height: calc(var(--track_height) * 0.25);
         width: calc(var(--track_height) * 0.25);
         border-radius: 50%;
-        background: gray;
+        background: var(--mark_color);
     }
 }

@@ -14,8 +14,8 @@
     },
     "keywords": ["angular", "ui", "components"],
     "peerDependencies": {
-        "@angular/common": "^19.1.0",
-        "@angular/core": "^19.1.0"
+        "@angular/common": "^20.0.6",
+        "@angular/core": "^20.0.6"
     },
     "dependencies": {
         "tslib": "^2.3.0"
