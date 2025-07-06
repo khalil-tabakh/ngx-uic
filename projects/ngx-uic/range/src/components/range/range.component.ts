@@ -52,7 +52,8 @@ export class NgxRangeComponent {
     protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
     protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
 
-    private setValue(percentage: number, thumb: HTMLElement): void {
+    private setValue(offsetX: number, thumb: HTMLElement): void {
+        let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
@@ -73,28 +74,23 @@ export class NgxRangeComponent {
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
-        let thumb = Math.abs(event.offsetX - thumbs[0].offsetLeft) < Math.abs(event.offsetX - thumbs[1].offsetLeft) ? thumbs[0] : thumbs[1];
+        const thumbDistance = (thumb: HTMLElement) => Math.abs(event.offsetX - thumb.offsetLeft);
+        let thumb = thumbDistance(thumbs[0]) < thumbDistance(thumbs[1]) ? thumbs[0] : thumbs[1];
         if (event.target === thumbs[0]) thumb = thumbs[0];
         if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
-        if (event.target === slider || event.target === track) {
-            const percentage = event.offsetX / slider.offsetWidth * 100;
-            this.setValue(percentage, thumb);
-        }
+        if (event.target === slider || event.target === track) this.setValue(event.offsetX, thumb);
 
         slider.setPointerCapture(event.pointerId);
         this.renderer.setStyle(slider, 'cursor', 'grabbing');
-        this.renderer.setStyle(thumbs[0], 'cursor', 'grabbing');
-        this.renderer.setStyle(thumbs[1], 'cursor', 'grabbing');
+        this.renderer.setStyle(thumb, 'cursor', 'grabbing');
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
             if (event.offsetX > thumbs[1].offsetLeft) thumb = thumbs[1];
-            const percentage = event.offsetX / slider.offsetWidth * 100;
-            this.setValue(percentage, thumb);
+            this.setValue(event.offsetX, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
             this.renderer.setStyle(slider, 'cursor', 'pointer');
-            this.renderer.setStyle(thumbs[0], 'cursor', 'grab');
-            this.renderer.setStyle(thumbs[1], 'cursor', 'grab');
+            this.renderer.setStyle(thumb, 'cursor', 'grab');
             onPointerMove();
             onPointerUp();
         });

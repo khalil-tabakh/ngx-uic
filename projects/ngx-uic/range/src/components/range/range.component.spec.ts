@@ -7,6 +7,7 @@ import { NgxRangeComponent } from './range.component';
 describe('NgxRangeComponent', () => {
     let component: NgxRangeComponent;
     let fixture: ComponentFixture<NgxRangeComponent>;
+    let slider: HTMLElement;
     let thumbs: HTMLElement[];
 
     beforeEach(async () => {
@@ -17,6 +18,8 @@ describe('NgxRangeComponent', () => {
 
         fixture = TestBed.createComponent(NgxRangeComponent);
         component = fixture.componentInstance;
+        // @ts-ignore
+        slider = component.sliderRef().nativeElement;
         // @ts-ignore
         thumbs = component.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
     });
@@ -65,30 +68,28 @@ describe('NgxRangeComponent', () => {
     });
 
     it('should update styles when the value changes', () => {
-        const slider = fixture.nativeElement.getElementsByClassName('slider')[0] as HTMLElement;
-        const sliderWidth = parseFloat(getComputedStyle(slider).width);
         const tumb1Style = getComputedStyle(thumbs[0]);
         const tumb2Style = getComputedStyle(thumbs[1]);
         fixture.detectChanges();
         expect(parseFloat(tumb1Style.left)).toBe(0);
-        expect(parseFloat(tumb2Style.left)).toBe(sliderWidth / 2);
+        expect(parseFloat(tumb2Style.left)).toBe(slider.offsetWidth * 0.5);
         fixture.componentRef.setInput('value', 25);
         fixture.detectChanges();
         expect(parseFloat(tumb1Style.left)).toBe(0);
-        expect(parseFloat(tumb2Style.left)).toBe(sliderWidth / 4);
+        expect(parseFloat(tumb2Style.left)).toBe(slider.offsetWidth * 0.25);
     });
 
     it('should set the value within bounds', () => {
         // @ts-ignore
-        component.setValue(120, thumbs[1]);
+        component.setValue(slider.offsetWidth * 1.2, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(100);
         // @ts-ignore
-        component.setValue(-10, thumbs[1]);
+        component.setValue(slider.offsetWidth * -0.1, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(0);
         // @ts-ignore
-        component.setValue(50, thumbs[1]);
+        component.setValue(slider.offsetWidth * 0.5, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(50);
     });
@@ -96,11 +97,11 @@ describe('NgxRangeComponent', () => {
     it('should allow any value when setting "step" to 0', () => {
         fixture.componentRef.setInput('step', 0); // Allows any value
         // @ts-ignore
-        component.setValue(42, thumbs[1]);
+        component.setValue(slider.offsetWidth * 0.42, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(42);
         // @ts-ignore
-        component.setValue(43.5, thumbs[1]);
+        component.setValue(slider.offsetWidth * 0.435, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(43.5);
     });
@@ -108,11 +109,11 @@ describe('NgxRangeComponent', () => {
     it('should constraint values to be mutliple of "step"', () => {
         fixture.componentRef.setInput('step', 5);
         // @ts-ignore
-        component.setValue(42, thumbs[1]);
+        component.setValue(slider.offsetWidth * 0.42, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(40);
         // @ts-ignore
-        component.setValue(43.5, thumbs[1]);
+        component.setValue(slider.offsetWidth * 0.435, thumbs[1]);
         // @ts-ignore
         expect(component.highest()).toBe(45);
     });
@@ -121,30 +122,30 @@ describe('NgxRangeComponent', () => {
         spyOn(component.change, 'emit');
         fixture.componentRef.setInput('type', 'simple');
         // @ts-ignore
-        component.setValue(50, thumbs[1]);
-        expect(component.change.emit).toHaveBeenCalledWith({ value: 50 });
+        component.setValue(slider.offsetWidth * 0.49, thumbs[1]);
+        expect(component.change.emit).toHaveBeenCalledWith({ value: 49 });
         fixture.componentRef.setInput('type', 'double');
         // @ts-ignore
-        component.setValue(30, thumbs[0]);
-        expect(component.change.emit).toHaveBeenCalledWith({ lower: 30, upper: 75 });
+        component.setValue(slider.offsetWidth * 0.18, thumbs[0]);
+        expect(component.change.emit).toHaveBeenCalledWith({ lower: 18, upper: 75 });
         // @ts-ignore
-        component.setValue(70, thumbs[1]);
-        expect(component.change.emit).toHaveBeenCalledWith({ lower: 30, upper: 70 });
+        component.setValue(slider.offsetWidth * 0.67, thumbs[1]);
+        expect(component.change.emit).toHaveBeenCalledWith({ lower: 18, upper: 67 });
     });
 
     it('should emit correct input event', () => {
         spyOn(component.input, 'emit');
         fixture.componentRef.setInput('type', 'simple');
         // @ts-ignore
-        component.setValue(50);
-        expect(component.input.emit).toHaveBeenCalledWith(50);
+        component.setValue(slider.offsetWidth * 0.83);
+        expect(component.input.emit).toHaveBeenCalledWith(83);
         fixture.componentRef.setInput('type', 'double');
         // @ts-ignore
-        component.setValue(25, 'first');
-        expect(component.input.emit).toHaveBeenCalledWith(25);
+        component.setValue(slider.offsetWidth * 0.34, thumbs[0]);
+        expect(component.input.emit).toHaveBeenCalledWith(34);
         // @ts-ignore
-        component.setValue(75, 'last');
-        expect(component.input.emit).toHaveBeenCalledWith(75);
+        component.setValue(slider.offsetWidth * 0.91, thumbs[1]);
+        expect(component.input.emit).toHaveBeenCalledWith(91);
     });
 
     it('should display marks', () => {
