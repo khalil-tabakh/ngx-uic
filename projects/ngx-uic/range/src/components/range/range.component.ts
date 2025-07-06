@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -12,7 +12,6 @@ import { RangeType } from '../../models/range-type.model';
     styleUrl: './range.component.scss'
 })
 export class NgxRangeComponent {
-    private elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
@@ -26,6 +25,10 @@ export class NgxRangeComponent {
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
+
+    private readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
+    private readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
+    private readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
 
     private lowest = linkedSignal({
         source: () => ({ min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
@@ -49,13 +52,13 @@ export class NgxRangeComponent {
     protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
     protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
 
-    private setValue(percentage: number, thumb: string): void {
+    private setValue(percentage: number, thumb: HTMLElement): void {
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
         const rounded = this.step() ? Math.round(mapped / this.step()) * this.step() : mapped;
-        if (thumb === 'first') this.lowest.set(rounded);
-        if (thumb === 'last') this.highest.set(rounded);
+        if (thumb === this.thumbRefs()[0].nativeElement) this.lowest.set(rounded);
+        if (thumb === this.thumbRefs()[1].nativeElement) this.highest.set(rounded);
 
         const event: RangeChange = this.type() === 'simple'
             ? { value: this.highest() }
@@ -66,14 +69,13 @@ export class NgxRangeComponent {
 
     @HostListener('pointerdown', ['$event'])
     private onSliding(event: PointerEvent): void {
-        const range = this.elementRef.nativeElement;
-        const track = range.getElementsByClassName('track')[0];
-        const slider = range.getElementsByClassName('slider')[0] as HTMLElement;
-        const thumbs = slider.getElementsByClassName('thumb') as HTMLCollectionOf<HTMLElement>;
+        const track = this.trackRef().nativeElement;
+        const slider = this.sliderRef().nativeElement;
+        const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
-        let thumb = Math.abs(event.offsetX - thumbs[0].offsetLeft) < Math.abs(event.offsetX - thumbs[1].offsetLeft) ? 'first' : 'last';
-        if (event.target === thumbs[0]) thumb = 'first';
-        if (event.target === thumbs[1] || this.type() === 'simple') thumb = 'last';
+        let thumb = Math.abs(event.offsetX - thumbs[0].offsetLeft) < Math.abs(event.offsetX - thumbs[1].offsetLeft) ? thumbs[0] : thumbs[1];
+        if (event.target === thumbs[0]) thumb = thumbs[0];
+        if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
         if (event.target === slider || event.target === track) {
             const percentage = event.offsetX / slider.scrollWidth * 100;
             this.setValue(percentage, thumb);
@@ -84,8 +86,8 @@ export class NgxRangeComponent {
         this.renderer.setStyle(thumbs[0], 'cursor', 'grabbing');
         this.renderer.setStyle(thumbs[1], 'cursor', 'grabbing');
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
-            if (event.offsetX < thumbs[0].offsetLeft) thumb = 'first';
-            if (event.offsetX > thumbs[1].offsetLeft) thumb = 'last';
+            if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
+            if (event.offsetX > thumbs[1].offsetLeft) thumb = thumbs[1];
             const percentage = event.offsetX / slider.scrollWidth * 100;
             this.setValue(percentage, thumb);
         });
