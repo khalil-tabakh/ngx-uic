@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, TemplateRef, computed, contentChild, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, TemplateRef, WritableSignal, computed, contentChild, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, Subscription } from 'rxjs';
+import { Observable } from 'rxjs';
 import { ScrollerLoader } from '../../models/scroller-loader.model';
 import { ScrollerType } from '../../models/scroller-type.model';
 
@@ -32,23 +32,47 @@ export class NgxScrollerComponent<ScrollerItem> implements OnInit, OnDestroy {
     private items = signal<ScrollerItem[]>([]);
     private first = signal(0);
     private last = signal(0);
+    private load = signal(true);
 
     protected content = computed(() => this.items().slice(this.first(), this.last()));
 
-    private loaderSub?: Subscription;
+    private fetcher = linkedSignal({
+        source: () => ({ load: this.load(), loader: this.loader() }),
+        computation: (source, previous) => !source.load
+            ? previous?.value ?? Promise.resolve([])
+            : source.loader instanceof Function ? source.loader() : source.loader
+    }) as WritableSignal<Exclude<ScrollerLoader<ScrollerItem>, Function>>;
 
-    private loader$ = effect(() => {
-        const loader = this.loader();
-        const fetcher = loader instanceof Function ? loader() : loader;
-        if (fetcher instanceof Promise || fetcher instanceof Observable) return;
-        const array = fetcher.value() || [];
-        untracked(() => this.addIems(array));
+    private load$ = effect(() => {
+        const load = this.load();
+        untracked(() => {
+            this.loading.emit(load);
+            if (!load) this.loaded.emit(this.items());
+        });
+    });
+    private loading$ = effect((onCleanup) => {
+        const fetcher = this.fetcher();
+        if (this.load()) switch (true) {
+            case fetcher instanceof Observable:
+                untracked(() => {
+                    const subscription = fetcher.subscribe((items) => this.addIems(items));
+                    onCleanup(() => subscription.unsubscribe());
+                });
+                break;
+            case fetcher instanceof Promise:
+                untracked(() => fetcher.then((items) => this.addIems(items)));
+                break;
+            default:
+                const loading = fetcher.isLoading();
+                untracked(() => loading ? this.load.set(true) : this.addIems(fetcher.value()));
+                break;
+        }
     });
 
     private uniIntersection$ = new IntersectionObserver((entries) => {
         if (!entries[0]?.isIntersecting) return;
         const isFinal = this.last() === this.items().length;
-        if (isFinal) this.loadItems();
+        if (isFinal) this.load.set(true);
         else this.addContent(this.batch());
     }, {
         rootMargin: isNaN(Number(this.offset())) ? this.offset() as string || undefined : undefined,
@@ -71,7 +95,7 @@ export class NgxScrollerComponent<ScrollerItem> implements OnInit, OnDestroy {
         const minContent = entries.filter((entry) => entry.isIntersecting).length;
         const isLast = entries.at(-1)!.isIntersecting;
         const isFinal = this.last() === this.items().length;
-        if (isLast && isFinal) this.loadItems();
+        if (isLast && isFinal) this.load.set(true);
         else {
             const batch = this.batch() - (this.content().length - minContent) + 1;
             const isShiftable = this.content().length > minContent + this.batch();
@@ -112,14 +136,16 @@ export class NgxScrollerComponent<ScrollerItem> implements OnInit, OnDestroy {
             this.items.set([]);
             this.loaded.emit(this.items());
         });
-        this.retry()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadItems()) || this.loadItems();
-        const loader = this.loader();
-        this.loaderSub = loader instanceof Observable ? loader.subscribe((array) => this.addIems(array)) : undefined;
+        this.retry()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+            this.load.set(true)
+            const fetcher = this.fetcher();
+            if (fetcher instanceof Observable || fetcher instanceof Promise) return;
+            fetcher.reload();
+        });
     }
 
     ngOnDestroy(): void {
         this.biIntersection$.disconnect();
-        this.loaderSub?.unsubscribe();
         this.mutation$.disconnect();
         this.uniIntersection$.disconnect();
     }
@@ -132,27 +158,11 @@ export class NgxScrollerComponent<ScrollerItem> implements OnInit, OnDestroy {
         return offset;
     }
 
-    private loadItems(): void {
-        this.loading.emit(true);
-        const loader = this.loader();
-        const fetcher = loader instanceof Function ? loader() : loader;
-        switch (true) {
-            case fetcher instanceof Observable:
-                this.loaderSub?.unsubscribe();
-                this.loaderSub = fetcher.subscribe((array) => this.addIems(array));
-                break;
-            case fetcher instanceof Promise:
-                fetcher.then((array) => this.addIems(array));
-                break;
-        }
-    }
-
     private addIems(array: ScrollerItem[]): void {
         if (array.length) this.items.update((items) => items.concat(array));
         if (this.type() === 'unidirectional' || !this.content().length) this.addContent(this.batch());
         else this.shiftContent(this.batch());
-        this.loaded.emit(this.items());
-        this.loading.emit(false);
+        this.load.set(false);
     }
 
     private addContent(batch: number): void {
