@@ -11,6 +11,7 @@ import { Observable, Subscription } from 'rxjs';
 export class NgxScrollerComponent implements OnInit, OnDestroy {
     private elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
 
+    readonly batch = input(0);
     readonly loader = input.required<() => Observable<any[]> | Promise<any[]>>();
     readonly offset = input<number | string>(-1);
     readonly threshold = input<number | number[]>();
@@ -25,7 +26,7 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
     private intersection$ = new IntersectionObserver((entries) => {
         const child = entries[0];
         if (!child.isIntersecting) return;
-        this.loadItems();
+        this.buffer.length ? this.appendItems() : this.loadItems();
         this.intersection$.unobserve(child.target);
     }, {
         rootMargin: isNaN(Number(this.offset())) ? this.offset() as string : undefined,
@@ -45,6 +46,8 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
 
     private loaderSub?: Subscription;
 
+    private buffer: any[] = [];
+
     ngOnInit(): void {
         this.mutation$.observe(this.elementRef.nativeElement, { childList: true });
     }
@@ -55,8 +58,9 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
         this.mutation$.disconnect();
     }
 
-    private appendItems(items: any[]): void {
-        this.items.update((items) => items.concat(items));
+    private appendItems(): void {
+        const batch = this.buffer.splice(0, this.batch() || this.buffer.length);
+        this.items.update((items) => items.concat(batch));
         this.loaded.emit(this.items());
     }
 
@@ -67,13 +71,15 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
             case loader instanceof Observable:
                 this.loaderSub?.unsubscribe();
                 this.loaderSub = loader.subscribe((array) => {
-                    this.appendItems(array);
+                    this.buffer = array;
+                    this.appendItems();
                     this.loading.emit(false);
                 });
                 break;
             case loader instanceof Promise:
                 loader.then((array) => {
-                    this.appendItems(array);
+                    this.buffer = array;
+                    this.appendItems();
                     this.loading.emit(false);
                 });
                 break;

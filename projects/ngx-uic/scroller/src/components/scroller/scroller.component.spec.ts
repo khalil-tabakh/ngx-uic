@@ -1,6 +1,6 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { NgxScrollerComponent } from './scroller.component';
 
 describe('NgxScrollerComponent', () => {
@@ -34,6 +34,43 @@ describe('NgxScrollerComponent', () => {
         component.ngOnInit();
         // @ts-ignore
         expect(component.loadItems).toHaveBeenCalled();
+    });
+
+    it('should append items from buffer', () => {
+        // @ts-ignore
+        component.buffer = [1, 2, 3];
+        // @ts-ignore
+        component.appendItems();
+        // @ts-ignore
+        expect(component.buffer).toEqual([]);
+        // @ts-ignore
+        expect(component.items()).toEqual([1, 2, 3]);
+    });
+
+    it('should process batch appending correctly', () => {
+        fixture.componentRef.setInput('batch', 2);
+        // @ts-ignore
+        component.buffer = [1, 2, 3];
+        // @ts-ignore
+        component.appendItems();
+        // @ts-ignore
+        expect(component.items()).toEqual([1, 2]);
+        // @ts-ignore
+        component.appendItems();
+        // @ts-ignore
+        expect(component.items()).toEqual([1, 2, 3]);
+    });
+
+    it('should update buffer after calling loader function', (done) => {
+        // @ts-ignore
+        expect(component.buffer).toEqual([]);
+        // @ts-ignore
+        component.loadItems();
+        setTimeout(() => {
+            // @ts-ignore
+            expect(component.buffer).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            done();
+        }, 100);
     });
 
     it('should emit loading state', (done) => {
