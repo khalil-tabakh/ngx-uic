@@ -2,11 +2,11 @@ $low: calc(var(--low, 0) * 1%);
 $high: calc(var(--high, 0) * 1%);
 
 :host {
-    --progress_color: white;
-    --track_height: 0.25rem;
-    --thumb_height: calc(var(--track_height) * 4);
-    --thumb_width: var(--thumb_height);
-    --mark_color: gray;
+    --progress-color: white;
+    --track-height: 0.25rem;
+    --thumb-height: calc(var(--track-height) * 4);
+    --thumb-width: var(--thumb-height);
+    --mark-color: gray;
 }
 
 :host {
@@ -20,7 +20,7 @@ $high: calc(var(--high, 0) * 1%);
 
 .track {
     position: relative;
-    height: var(--track_height);
+    height: var(--track-height);
     width: 100%;
     background: rgba(255, 255, 255, 0.2);
 
@@ -29,7 +29,7 @@ $high: calc(var(--high, 0) * 1%);
         position: absolute;
         height: 100%;
         width: 100%;
-        background: var(--progress_color);
+        background: var(--progress-color);
         transform-origin: left;
         transform: translateX($low) scaleX(calc($high - $low));
     }
@@ -40,17 +40,17 @@ $high: calc(var(--high, 0) * 1%);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: var(--track_height);
-    width: calc(100% - var(--thumb_width));
+    height: var(--track-height);
+    width: calc(100% - var(--thumb-width));
 
     .thumb {
         position: absolute;
         top: 50%;
         translate: -50% -50%;
-        height: var(--thumb_height);
-        width: var(--thumb_width);
-        border-radius: var(--thumb_width);
-        background: var(--progress_color);
+        height: var(--thumb-height);
+        width: var(--thumb-width);
+        border-radius: var(--thumb-width);
+        background: var(--progress-color);
         box-shadow: 0 0 0.5em -0.25rem black;
         cursor: grab;
 
@@ -65,9 +65,9 @@ $high: calc(var(--high, 0) * 1%);
     }
 
     .mark {
-        height: calc(var(--track_height) * 0.25);
-        width: calc(var(--track_height) * 0.25);
+        height: calc(var(--track-height) * 0.25);
+        width: calc(var(--track-height) * 0.25);
         border-radius: 50%;
-        background: var(--mark_color);
+        background: var(--mark-color);
     }
 }
