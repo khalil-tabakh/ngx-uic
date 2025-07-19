@@ -39,7 +39,7 @@ class WrapperComponent {
 }
 
 describe('NgxScrollerComponent', () => {
-    let component: NgxScrollerComponent;
+    let component: NgxScrollerComponent<number>;
     let fixture: ComponentFixture<WrapperComponent>;
 
     beforeEach(async () => {

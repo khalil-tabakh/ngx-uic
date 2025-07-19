@@ -11,25 +11,25 @@ import { ScrollerType } from '../../models/scroller-type.model';
     templateUrl: './scroller.component.html',
     styleUrl: './scroller.component.scss'
 })
-export class NgxScrollerComponent implements OnInit, OnDestroy {
+export class NgxScrollerComponent<ScrollerItem> implements OnInit, OnDestroy {
     private destroyRef = inject(DestroyRef);
     private elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
 
     readonly batch = input(1, { transform: (value: number | string) => Number(value) > 0 ? Number(value) : 1 });
-    readonly loader = input.required<ScrollerLoader<any[]>>();
+    readonly loader = input.required<ScrollerLoader<ScrollerItem>>();
     readonly offset = input<number | string>(0);
-    readonly remove = input<Observable<any | any[]>>();
+    readonly remove = input<Observable<ScrollerItem | ScrollerItem[]>>();
     readonly reset = input<Observable<void>>();
     readonly retry = input<Observable<void>>();
     readonly threshold = input<number | number[]>(0);
     readonly type = input<ScrollerType>('unidirectional');
 
-    readonly loaded = output<any[]>();
+    readonly loaded = output<ScrollerItem[]>();
     readonly loading = output<boolean>();
 
     protected template = contentChild.required(TemplateRef);
 
-    private items = signal<any[]>([]);
+    private items = signal<ScrollerItem[]>([]);
     private first = signal(0);
     private last = signal(0);
 
@@ -39,8 +39,9 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
 
     private loader$ = effect(() => {
         const loader = this.loader();
-        if (loader instanceof Function || loader instanceof Observable) return;
-        const array = loader.value() || [];
+        const fetcher = loader instanceof Function ? loader() : loader;
+        if (fetcher instanceof Promise || fetcher instanceof Observable) return;
+        const array = fetcher.value() || [];
         untracked(() => this.addIems(array));
     });
 
@@ -133,21 +134,20 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
 
     private loadItems(): void {
         this.loading.emit(true);
-        const loaderFn = this.loader();
-        if (!(loaderFn instanceof Function)) return;
-        const loader = loaderFn();
+        const loader = this.loader();
+        const fetcher = loader instanceof Function ? loader() : loader;
         switch (true) {
-            case loader instanceof Observable:
+            case fetcher instanceof Observable:
                 this.loaderSub?.unsubscribe();
-                this.loaderSub = loader.subscribe((array) => this.addIems(array));
+                this.loaderSub = fetcher.subscribe((array) => this.addIems(array));
                 break;
-            case loader instanceof Promise:
-                loader.then((array) => this.addIems(array));
+            case fetcher instanceof Promise:
+                fetcher.then((array) => this.addIems(array));
                 break;
         }
     }
 
-    private addIems(array: any[]): void {
+    private addIems(array: ScrollerItem[]): void {
         if (array.length) this.items.update((items) => items.concat(array));
         if (this.type() === 'unidirectional' || !this.content().length) this.addContent(this.batch());
         else this.shiftContent(this.batch());
