@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, TemplateRef, contentChild, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, TemplateRef, computed, contentChild, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subscription } from 'rxjs';
+import { ScrollerLoader } from '../../models/scroller-loader.model';
+import { ScrollerType } from '../../models/scroller-type.model';
 
 @Component({
     selector: 'ngx-scroller',
@@ -13,45 +15,90 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
     private destroyRef = inject(DestroyRef);
     private elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
 
-    readonly batch = input(0);
-    readonly loader = input.required<() => Observable<any[]> | Promise<any[]>>();
-    readonly offset = input<number | string>(-1);
+    readonly batch = input(1, { transform: (value: number | string) => Number(value) > 0 ? Number(value) : 1 });
+    readonly loader = input.required<ScrollerLoader<any[]>>();
+    readonly offset = input<number | string>(0);
     readonly remove = input<Observable<any | any[]>>();
     readonly reset = input<Observable<void>>();
     readonly retry = input<Observable<void>>();
-    readonly threshold = input<number | number[]>();
+    readonly threshold = input<number | number[]>(0);
+    readonly type = input<ScrollerType>('unidirectional');
 
     readonly loaded = output<any[]>();
     readonly loading = output<boolean>();
 
     protected template = contentChild.required(TemplateRef);
 
-    protected items = signal<any[]>([]);
+    private items = signal<any[]>([]);
+    private first = signal(0);
+    private last = signal(0);
 
-    private intersection$ = new IntersectionObserver((entries) => {
-        const child = entries[0];
-        if (!child.isIntersecting) return;
-        this.buffer.length ? this.appendItems() : this.loadItems();
-        this.intersection$.unobserve(child.target);
+    protected content = computed(() => this.items().slice(this.first(), this.last()));
+
+    private loaderSub?: Subscription;
+
+    private loader$ = effect(() => {
+        const loader = this.loader();
+        if (loader instanceof Function || loader instanceof Observable) return;
+        const array = loader.value() || [];
+        untracked(() => this.addIems(array));
+    });
+
+    private uniIntersection$ = new IntersectionObserver((entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        const isFinal = this.last() === this.items().length;
+        if (isFinal) this.loadItems();
+        else this.addContent(this.batch());
     }, {
-        rootMargin: isNaN(Number(this.offset())) ? this.offset() as string : undefined,
+        rootMargin: isNaN(Number(this.offset())) ? this.offset() as string || undefined : undefined,
+        threshold: this.threshold()
+    });
+
+    private biIntersection$ = new IntersectionObserver((entries) => {
+        const children = this.elementRef.nativeElement.children;
+        const offset = this.getOffset();
+        if (entries.length < children.length - 2 * offset) {
+            this.biIntersection$.disconnect();
+            for (let i = offset; i < children.length - offset; i++) this.biIntersection$.observe(children[i]);
+            return;
+        }
+        if (entries.at(0)!.isIntersecting && entries.at(-1)!.isIntersecting) {
+            this.addContent(1);
+            return;
+        }
+        if (!entries.at(0)!.isIntersecting && !entries.at(-1)!.isIntersecting) return;
+        const minContent = entries.filter((entry) => entry.isIntersecting).length;
+        const isLast = entries.at(-1)!.isIntersecting;
+        const isFinal = this.last() === this.items().length;
+        if (isLast && isFinal) this.loadItems();
+        else {
+            const batch = this.batch() - (this.content().length - minContent) + 1;
+            const isShiftable = this.content().length > minContent + this.batch();
+            if (isShiftable) this.shiftContent(isLast ? this.batch() : -this.batch());
+            else this.addContent(isLast ? batch : -batch);
+        }
+    }, {
+        rootMargin: isNaN(Number(this.offset())) ? this.offset() as string || undefined : undefined,
         threshold: this.threshold()
     });
 
     private mutation$ = new MutationObserver(() => {
-        this.intersection$.disconnect();
+        this.biIntersection$.disconnect();
+        this.uniIntersection$.disconnect();
         const children = this.elementRef.nativeElement.children;
         if (!children.length) return;
-        let offset = Math.round(Number(this.offset()));
-        if (isNaN(offset) || offset > -1) offset = -1;
-        if (-offset > children.length) offset = -children.length;
-        const child = children.item(children.length + offset)!;
-        this.intersection$.observe(child);
+        if (this.last() > this.items().length) {
+            const batch = this.last() - this.items().length;
+            if (batch > this.first()) {
+                this.shiftContent(-this.first());
+                this.last.update((last) => last - (batch - this.first()));
+            } else this.shiftContent(-batch);
+            return;
+        }
+        const offset = this.getOffset();
+        if (this.type() === 'unidirectional') this.uniIntersection$.observe(children[children.length - 1 - offset]);
+        else for (let i = offset; i < children.length - offset; i++) this.biIntersection$.observe(children[i]);
     });
-
-    private loaderSub?: Subscription;
-
-    private buffer: any[] = [];
 
     ngOnInit(): void {
         this.mutation$.observe(this.elementRef.nativeElement, { childList: true });
@@ -61,44 +108,64 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
             this.loaded.emit(this.items());
         });
         this.reset()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-            this.buffer = [];
             this.items.set([]);
             this.loaded.emit(this.items());
         });
         this.retry()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadItems()) || this.loadItems();
+        const loader = this.loader();
+        this.loaderSub = loader instanceof Observable ? loader.subscribe((array) => this.addIems(array)) : undefined;
     }
 
     ngOnDestroy(): void {
+        this.biIntersection$.disconnect();
         this.loaderSub?.unsubscribe();
-        this.intersection$.disconnect();
         this.mutation$.disconnect();
+        this.uniIntersection$.disconnect();
     }
 
-    private appendItems(): void {
-        const batch = this.buffer.splice(0, this.batch() || this.buffer.length);
-        this.items.update((items) => items.concat(batch));
-        this.loaded.emit(this.items());
+    private getOffset(): number {
+        const middle = Math.ceil(this.content().length / 2) - 1;
+        let offset = Math.round(Number(this.offset()));
+        if (isNaN(offset) || offset < 0) offset = 0;
+        if (offset > middle) offset = middle;
+        return offset;
     }
 
     private loadItems(): void {
         this.loading.emit(true);
-        const loader = this.loader()();
+        const loaderFn = this.loader();
+        if (!(loaderFn instanceof Function)) return;
+        const loader = loaderFn();
         switch (true) {
             case loader instanceof Observable:
                 this.loaderSub?.unsubscribe();
-                this.loaderSub = loader.subscribe((array) => {
-                    this.buffer = array;
-                    this.appendItems();
-                    this.loading.emit(false);
-                });
+                this.loaderSub = loader.subscribe((array) => this.addIems(array));
                 break;
             case loader instanceof Promise:
-                loader.then((array) => {
-                    this.buffer = array;
-                    this.appendItems();
-                    this.loading.emit(false);
-                });
+                loader.then((array) => this.addIems(array));
                 break;
         }
+    }
+
+    private addIems(array: any[]): void {
+        if (array.length) this.items.update((items) => items.concat(array));
+        if (this.type() === 'unidirectional' || !this.content().length) this.addContent(this.batch());
+        else this.shiftContent(this.batch());
+        this.loaded.emit(this.items());
+        this.loading.emit(false);
+    }
+
+    private addContent(batch: number): void {
+        if (this.first() + batch < 0) batch = -this.first();
+        if (this.last() + batch > this.items().length) batch = this.items().length - this.last();
+        if (batch < 0) this.first.update((first) => first + batch);
+        if (batch > 0) this.last.update((last) => last + batch);
+    }
+
+    private shiftContent(batch: number): void {
+        if (this.first() + batch < 0) batch = -this.first();
+        if (this.last() + batch > this.items().length) batch = this.items().length - this.last();
+        this.first.update((first) => first + batch);
+        this.last.update((last) => last + batch);
     }
 }

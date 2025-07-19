@@ -5,7 +5,7 @@ The `NgxScrollerModule` provides a reusable scrollable container component for A
 ## Features
 
 - Infinite scrolling with batch appending.
-- Supports asynchronous data fetching using `Observable` or `Promise`.
+- Supports asynchronous data fetching using `Observable`, `Promise` or `ResourceRef`.
 - Handles dynamic item removal and resets.
 - Configurable scroll `offset` and `threshold` values.
 - Emits value changes via `loaded` and `loading` events.
