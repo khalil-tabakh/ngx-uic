@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, TemplateRef, contentChild, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, TemplateRef, contentChild, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subscription } from 'rxjs';
 
 @Component({
@@ -9,11 +10,15 @@ import { Observable, Subscription } from 'rxjs';
     styleUrl: './scroller.component.scss'
 })
 export class NgxScrollerComponent implements OnInit, OnDestroy {
+    private destroyRef = inject(DestroyRef);
     private elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
 
     readonly batch = input(0);
     readonly loader = input.required<() => Observable<any[]> | Promise<any[]>>();
     readonly offset = input<number | string>(-1);
+    readonly remove = input<Observable<any | any[]>>();
+    readonly reset = input<Observable<void>>();
+    readonly retry = input<Observable<void>>();
     readonly threshold = input<number | number[]>();
 
     readonly loaded = output<any[]>();
@@ -50,6 +55,17 @@ export class NgxScrollerComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.mutation$.observe(this.elementRef.nativeElement, { childList: true });
+        this.remove()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((removables) => {
+            if (!(removables instanceof Array)) removables = [removables];
+            this.items.update((items) => items.filter((item) => !removables.includes(item)));
+            this.loaded.emit(this.items());
+        });
+        this.reset()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+            this.buffer = [];
+            this.items.set([]);
+            this.loaded.emit(this.items());
+        });
+        this.retry()?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadItems()) || this.loadItems();
     }
 
     ngOnDestroy(): void {

@@ -36,6 +36,17 @@ describe('NgxScrollerComponent', () => {
         expect(component.loadItems).toHaveBeenCalled();
     });
 
+    it('should not load items on initialization when passing retry observable', () => {
+        const retry$ = new Subject<void>();
+        fixture.componentRef.setInput('retry', retry$);
+        // @ts-ignore
+        spyOn(component, 'loadItems');
+        // @ts-ignore
+        component.ngOnInit();
+        // @ts-ignore
+        expect(component.loadItems).not.toHaveBeenCalled();
+    });
+
     it('should append items from buffer', () => {
         // @ts-ignore
         component.buffer = [1, 2, 3];
@@ -71,6 +82,36 @@ describe('NgxScrollerComponent', () => {
             expect(component.buffer).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
             done();
         }, 100);
+    });
+
+    it('should handle remove input', () => {
+        const remove$ = new Subject<number[]>();
+        fixture.componentRef.setInput('remove', remove$);
+        // @ts-ignore
+        component.items().set([1, 2, 3, 4]);
+        remove$.next([1, 3]);
+        // @ts-ignore
+        expect(component.items()).toEqual([2, 4]);
+    });
+
+    it('should handle reset input', () => {
+        const reset$ = new Subject<void>();
+        fixture.componentRef.setInput('reset', reset$);
+        // @ts-ignore
+        component.items().set([1, 2, 3]);
+        reset$.next();
+        // @ts-ignore
+        expect(component.items()).toEqual([]);
+    });
+
+    it('should handle retry input', () => {
+        const retry$ = new Subject<void>();
+        fixture.componentRef.setInput('retry', retry$);
+        // @ts-ignore
+        spyOn(component, 'loadItems');
+        retry$.next();
+        // @ts-ignore
+        expect(component.loadItems).toHaveBeenCalled();
     });
 
     it('should emit loading state', (done) => {
