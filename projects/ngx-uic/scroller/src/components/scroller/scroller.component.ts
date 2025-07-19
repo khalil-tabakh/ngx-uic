@@ -1,0 +1,82 @@
+import { CommonModule } from '@angular/common';
+import { Component, ElementRef, OnDestroy, OnInit, TemplateRef, contentChild, inject, input, output, signal } from '@angular/core';
+import { Observable, Subscription } from 'rxjs';
+
+@Component({
+    selector: 'ngx-scroller',
+    imports: [CommonModule],
+    templateUrl: './scroller.component.html',
+    styleUrl: './scroller.component.scss'
+})
+export class NgxScrollerComponent implements OnInit, OnDestroy {
+    private elementRef = inject(ElementRef) as ElementRef<HTMLElement>;
+
+    readonly loader = input.required<() => Observable<any[]> | Promise<any[]>>();
+    readonly offset = input<number | string>(-1);
+    readonly threshold = input<number | number[]>();
+
+    readonly loaded = output<any[]>();
+    readonly loading = output<boolean>();
+
+    protected template = contentChild.required(TemplateRef);
+
+    protected items = signal<any[]>([]);
+
+    private intersection$ = new IntersectionObserver((entries) => {
+        const child = entries[0];
+        if (!child.isIntersecting) return;
+        this.loadItems();
+        this.intersection$.unobserve(child.target);
+    }, {
+        rootMargin: isNaN(Number(this.offset())) ? this.offset() as string : undefined,
+        threshold: this.threshold()
+    });
+
+    private mutation$ = new MutationObserver(() => {
+        this.intersection$.disconnect();
+        const children = this.elementRef.nativeElement.children;
+        if (!children.length) return;
+        let offset = Math.round(Number(this.offset()));
+        if (isNaN(offset) || offset > -1) offset = -1;
+        if (-offset > children.length) offset = -children.length;
+        const child = children.item(children.length + offset)!;
+        this.intersection$.observe(child);
+    });
+
+    private loaderSub?: Subscription;
+
+    ngOnInit(): void {
+        this.mutation$.observe(this.elementRef.nativeElement, { childList: true });
+    }
+
+    ngOnDestroy(): void {
+        this.loaderSub?.unsubscribe();
+        this.intersection$.disconnect();
+        this.mutation$.disconnect();
+    }
+
+    private appendItems(items: any[]): void {
+        this.items.update((items) => items.concat(items));
+        this.loaded.emit(this.items());
+    }
+
+    private loadItems(): void {
+        this.loading.emit(true);
+        const loader = this.loader()();
+        switch (true) {
+            case loader instanceof Observable:
+                this.loaderSub?.unsubscribe();
+                this.loaderSub = loader.subscribe((array) => {
+                    this.appendItems(array);
+                    this.loading.emit(false);
+                });
+                break;
+            case loader instanceof Promise:
+                loader.then((array) => {
+                    this.appendItems(array);
+                    this.loading.emit(false);
+                });
+                break;
+        }
+    }
+}

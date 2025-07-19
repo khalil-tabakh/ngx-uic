@@ -1,0 +1,3 @@
+@for (item of items(); track item) {
+    <ng-container *ngTemplateOutlet="template(); context: { $implicit: item }" />
+}

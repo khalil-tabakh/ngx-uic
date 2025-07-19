@@ -41,6 +41,22 @@
                     }
                 }
             }
+        },
+        "scroller": {
+            "projectType": "library",
+            "root": "projects/ngx-uic/scroller",
+            "sourceRoot": "projects/ngx-uic/scroller/src",
+            "prefix": "ngx",
+            "architect": {
+                "test": {
+                    "builder": "@angular/build:karma",
+                    "options": {
+                        "tsConfig": "projects/ngx-uic/scroller/tsconfig.spec.json",
+                        "polyfills": [],
+                        "codeCoverage": true
+                    }
+                }
+            }
         }
     },
     "cli": {
