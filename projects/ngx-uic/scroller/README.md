@@ -1,15 +1,12 @@
 # NgxScrollerModule
 
-The `NgxScrollerModule` provides a reusable scrollable container component for Angular applications. It includes the `NgxScrollerComponent`, a customizable Angular component for creating infinite scroll containers. It provides flexibility for loading, appending, and managing items dynamically.
+The `NgxScrollerModule` provides a reusable scrollable container component for Angular applications. It includes the `NgxScrollerComponent`, a customizable Angular component for creating infinite scroll containers.
 
 ## Features
 
 - Infinite scrolling with batch appending.
-- Supports asynchronous data fetching using `Observable`, `Promise` or `ResourceRef`.
-- Handles dynamic item removal and resets.
 - Configurable scroll `offset` and `threshold` values.
-- Emits value changes via `loaded` and `loading` events.
-- Reactive signal-based architecture for better performance.
+- Emits `first` and `last` events when reaching the first or the last observed element.
 
 ## Usage
 
@@ -17,8 +14,8 @@ The `NgxScrollerModule` provides a reusable scrollable container component for A
 
 ```ts
 import { HttpClient } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
-import { catchError, tap } from 'rxjs';
+import { Component, inject, linkedSignal, rxResource, signal } from '@angular/core';
+import { catchError } from 'rxjs';
 import { NgxScrollerModule } from 'ngx-uic/scroller';
 
 @Component({
@@ -29,21 +26,22 @@ import { NgxScrollerModule } from 'ngx-uic/scroller';
 })
 export class AppComponent {
     http = inject(HttpClient);
-    offset = 1;
-
-    loadImages() {
-        return this.http.get<any[]>(`https://picsum.photos/v2/list?page=${this.offset}&limit=100`).pipe(
-            catchError((error) => []),
-            tap((data) => data.length && this.offset++)
-        );
-    }
+    page = signal(0);
+    stream = rxResource({
+        params: this.page,
+        defaultValue: [],
+        stream: (request) => this.http
+            .get<any[]>(`https://picsum.photos/v2/list?page=${request.params}&limit=100`)
+            .pipe(catchError((error) => []))
+    });
+    images = linkedSignal<unknown[], unknown[]>({
+        source: this.stream.value,
+        computation: (images, previous) => previous?.value ? previous.value.concat(images) : images
+    });
 }
 ```
 ```html
-<ngx-scroller
-    [batch]="10"
-    [loader]="loadImages.bind(this)"
->
+<ngx-scroller [batch]="10" [items]="items()" (last)="page.set(page() + 1)">
     <ng-template let-image>
         <img [src]="image.download_url" />
     </ng-template>
