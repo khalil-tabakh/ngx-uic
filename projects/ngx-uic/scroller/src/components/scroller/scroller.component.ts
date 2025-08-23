@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, TemplateRef, afterRenderEffect, computed, contentChild, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, computed, contentChild, effect, inject, input, linkedSignal, output, untracked } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
@@ -10,6 +10,7 @@ import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 })
 export class NgxScrollerComponent {
     private elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+    private injector = inject(Injector);
 
     readonly batch = input(1, { transform: batchAttribute });
     readonly items = input.required<unknown[]>();
@@ -42,6 +43,7 @@ export class NgxScrollerComponent {
 
     protected content = computed(() => this.items().slice(this.start(), this.end()));
 
+    private intersections = { first: null as HTMLElement | null, last: null as HTMLElement | null };
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
             case 1:
@@ -51,9 +53,17 @@ export class NgxScrollerComponent {
                 if (isLast) {
                     if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
                     else if (entries[0].isIntersecting) this.updateContent(this.batch());
+                    this.intersections = {
+                        first: this.intersections.first,
+                        last: entries[0].isIntersecting ? entries[0].target as HTMLElement : null
+                    };
                 } else {
                     if (entries[0].isIntersecting && this.start() <= 0) this.first.emit();
                     else if (entries[0].isIntersecting) this.updateContent(-this.batch());
+                    this.intersections = {
+                        first: entries[0].isIntersecting ? entries[0].target as HTMLElement : null,
+                        last: this.intersections.last,
+                    };
                 }
                 break;
             case 2:
@@ -64,6 +74,10 @@ export class NgxScrollerComponent {
                     if (entries[0].isIntersecting) this.updateContent(-this.batch());
                     else if (entries[1].isIntersecting) this.updateContent(this.batch());
                 }
+                this.intersections = {
+                    first: entries[0].isIntersecting ? entries[0].target as HTMLElement : null,
+                    last: entries[1].isIntersecting ? entries[1].target as HTMLElement : null
+                };
                 break;
         }
     }, {
@@ -71,15 +85,30 @@ export class NgxScrollerComponent {
         threshold: this.threshold()
     });
 
-    private observeContent$ = afterRenderEffect((onCleanup) => {
-        if (!this.items().length) return;
-        const children = this.elementRef.nativeElement.children;
-        const half = Math.ceil(this.content().length / 2) - 1;
-        let offset = Number(this.offset()) || 0;
-        if (offset > half) offset = half;
-        this.intersection$.observe(children[offset]);
-        this.intersection$.observe(children[children.length - 1 - offset]);
-        onCleanup(() => this.intersection$.disconnect());
+    private unshiftContent$ = effect(() => this.content().length && untracked(() => {
+        if (!this.intersections.first) return;
+        const child = this.intersections.first;
+        const left = this.elementRef.nativeElement.scrollLeft - child.offsetLeft;
+        const top = this.elementRef.nativeElement.scrollTop - child.offsetTop;
+        afterNextRender({
+            write: () => {
+                child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
+                this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
+            }
+        }, { injector: this.injector });
+    }));
+
+    private observeContent$ = afterRenderEffect({
+        read: (onCleanup) => {
+            if (!this.items().length) return;
+            const children = this.elementRef.nativeElement.children;
+            const half = Math.ceil(this.content().length / 2) - 1;
+            let offset = Number(this.offset()) || 0;
+            if (offset > half) offset = half;
+            this.intersection$.observe(children[offset]);
+            this.intersection$.observe(children[children.length - 1 - offset]);
+            onCleanup(() => this.intersection$.disconnect());
+        }
     });
 
     private updateContent(batch: number): void {
