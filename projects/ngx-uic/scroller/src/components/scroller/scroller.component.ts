@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, computed, contentChild, effect, inject, input, linkedSignal, output, untracked } from '@angular/core';
+import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, untracked } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
@@ -15,6 +15,7 @@ export class NgxScrollerComponent {
     readonly batch = input(1, { transform: batchAttribute });
     readonly items = input.required<unknown[]>();
     readonly offset = input(0, { transform: offsetAttribute });
+    readonly reverse = input(false, { transform: booleanAttribute });
     readonly threshold = input<number | number[]>();
 
     readonly first = output<void>();
@@ -41,7 +42,10 @@ export class NgxScrollerComponent {
         }
     });
 
-    protected content = computed(() => this.items().slice(this.start(), this.end()));
+    protected content = computed(() => this.reverse()
+        ? this.items().slice(this.start(), this.end()).reverse()
+        : this.items().slice(this.start(), this.end())
+    );
 
     private intersections = { first: null as HTMLElement | null, last: null as HTMLElement | null };
     private intersection$ = new IntersectionObserver((entries) => {
@@ -49,7 +53,7 @@ export class NgxScrollerComponent {
             case 1:
                 const children = Array.from(this.elementRef.nativeElement.children);
                 const index = children.indexOf(entries[0].target);
-                const isLast = children.length - 1 - index <= index;
+                const isLast = this.reverse() ? index <= children.length - 1 - index : children.length - 1 - index <= index;
                 if (isLast) {
                     if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
                     else if (entries[0].isIntersecting) this.updateContent(this.batch());
@@ -86,8 +90,8 @@ export class NgxScrollerComponent {
     });
 
     private unshiftContent$ = effect(() => this.content().length && untracked(() => {
-        if (!this.intersections.first) return;
-        const child = this.intersections.first;
+        const child = this.reverse() ? this.intersections.last : this.intersections.first;
+        if (!child) return;
         const left = this.elementRef.nativeElement.scrollLeft - child.offsetLeft;
         const top = this.elementRef.nativeElement.scrollTop - child.offsetTop;
         afterNextRender({
@@ -105,9 +109,23 @@ export class NgxScrollerComponent {
             const half = Math.ceil(this.content().length / 2) - 1;
             let offset = Number(this.offset()) || 0;
             if (offset > half) offset = half;
-            this.intersection$.observe(children[offset]);
-            this.intersection$.observe(children[children.length - 1 - offset]);
+            if (this.reverse()) {
+                this.intersection$.observe(children[children.length - 1 - offset]);
+                this.intersection$.observe(children[offset]);
+            } else {
+                this.intersection$.observe(children[offset]);
+                this.intersection$.observe(children[children.length - 1 - offset]);
+            }
             onCleanup(() => this.intersection$.disconnect());
+        }
+    });
+    private reverseContent$ = afterRenderEffect({
+        earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
+        write: (direction) => {
+            this.elementRef.nativeElement.classList.toggle('column', direction() === 'column-reverse');
+            this.elementRef.nativeElement.classList.toggle('row', direction() === 'row-reverse');
+            this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
+            this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
         }
     });
 

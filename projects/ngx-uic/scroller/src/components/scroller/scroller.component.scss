@@ -1,3 +1,19 @@
 :host {
     overflow: auto;
+
+    &.column {
+        flex-direction: column !important;
+
+        &--reverse ::ng-deep > *:first-child {
+            margin-top: auto;
+        }
+    }
+
+    &.row  {
+        flex-direction: row !important;
+
+        &--reverse ::ng-deep > *:first-child {
+            margin-left: auto;
+        }
+    }
 }
