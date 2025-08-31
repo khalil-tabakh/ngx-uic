@@ -48,6 +48,7 @@ export class NgxScrollerComponent {
         : this.items().slice(this.start(), this.end())
     );
 
+    private filled = false;
     private intersections = { first: null as HTMLElement | null, last: null as HTMLElement | null };
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
@@ -77,6 +78,7 @@ export class NgxScrollerComponent {
                 this.intersections.last = entries[1].isIntersecting ? entries[1].target as HTMLElement : null;
                 break;
         }
+        this.filled ||= !this.intersections.last;
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
         threshold: this.threshold()
@@ -85,12 +87,18 @@ export class NgxScrollerComponent {
     private unshiftContent$ = effect(() => this.content().length && untracked(() => {
         const child = this.reverse() ? this.intersections.last : this.intersections.first;
         if (!child) return;
-        const left = this.elementRef.nativeElement.scrollLeft - child.offsetLeft;
-        const top = this.elementRef.nativeElement.scrollTop - child.offsetTop;
+        const left = this.filled
+            ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
+            : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
+        const top = this.filled
+            ? this.elementRef.nativeElement.scrollTop - child.offsetTop
+            : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
         afterNextRender({
             write: () => {
-                child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
-                this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
+                if (this.filled) {
+                    child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
+                    this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
+                } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
             }
         }, { injector: this.injector });
     }));

@@ -9,7 +9,7 @@
         }
     }
 
-    &.row  {
+    &.row {
         flex-direction: row !important;
 
         &--reverse ::ng-deep > *:first-child {
