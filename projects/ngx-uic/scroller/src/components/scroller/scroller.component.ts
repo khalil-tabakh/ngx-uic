@@ -58,11 +58,11 @@ export class NgxScrollerComponent {
                 const isLast = this.reverse() ? index <= children.length - 1 - index : children.length - 1 - index <= index;
                 if (isLast) {
                     if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
-                    else if (entries[0].isIntersecting) this.updateContent(this.batch(), this.virtualize() && !this.intersections.first);
+                    else if (entries[0].isIntersecting) this.updateContent(this.batch());
                     this.intersections.last = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
                 } else {
                     if (entries[0].isIntersecting && this.start() <= 0) this.first.emit();
-                    else if (entries[0].isIntersecting) this.updateContent(-this.batch(), this.virtualize() && !this.intersections.last);
+                    else if (entries[0].isIntersecting) this.updateContent(-this.batch());
                     this.intersections.first = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
                 }
                 break;
@@ -71,8 +71,8 @@ export class NgxScrollerComponent {
                     if (this.end() >= this.items().length) this.last.emit();
                     else this.updateContent(1, false);
                 } else {
-                    if (entries[0].isIntersecting) this.updateContent(-this.batch(), this.virtualize() && !this.intersections.last);
-                    else if (entries[1].isIntersecting) this.updateContent(this.batch(), this.virtualize() && !this.intersections.first);
+                    if (entries[0].isIntersecting) this.updateContent(-this.batch());
+                    else if (entries[1].isIntersecting) this.updateContent(this.batch());
                 }
                 this.intersections.first = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
                 this.intersections.last = entries[1].isIntersecting ? entries[1].target as HTMLElement : null;
@@ -130,10 +130,10 @@ export class NgxScrollerComponent {
         }
     });
 
-    private updateContent(batch: number, virtualize: boolean): void {
+    private updateContent(batch: number, virtualize = this.virtualize()): void {
         if (this.start() + batch < 0) batch = -this.start();
         if (this.end() + batch > this.items().length) batch = this.items().length - this.end();
-        if (batch < 0 || virtualize) this.start.update((start) => start + batch);
-        if (batch > 0 || virtualize) this.end.update((end) => end + batch);
+        if (batch < 0 || (virtualize && !this.intersections.first)) this.start.update((start) => start + batch);
+        if (batch > 0 || (virtualize && !this.intersections.last)) this.end.update((end) => end + batch);
     }
 }
