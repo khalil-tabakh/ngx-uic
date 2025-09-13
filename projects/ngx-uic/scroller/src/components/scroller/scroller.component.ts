@@ -105,11 +105,10 @@ export class NgxScrollerComponent {
 
     private observeContent$ = afterRenderEffect({
         read: (onCleanup) => {
-            if (!this.items().length) return;
+            if (!this.content().length) return;
             const children = this.elementRef.nativeElement.children;
-            const half = Math.ceil(this.content().length / 2) - 1;
             let offset = Number(this.offset()) || 0;
-            if (offset > half) offset = half;
+            if (offset > children.length - 2) offset = children.length - 2 >= 0 ? children.length - 2 : 0;
             if (this.reverse()) {
                 this.intersection$.observe(children[children.length - 1 - offset]);
                 this.intersection$.observe(children[offset]);
