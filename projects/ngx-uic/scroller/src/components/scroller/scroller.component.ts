@@ -49,6 +49,7 @@ export class NgxScrollerComponent {
     );
 
     private intersections = { first: null as IntersectionObserverEntry | null, last: null as IntersectionObserverEntry | null };
+    private offsetable = false;
     private shiftable = false;
 
     private intersection$ = new IntersectionObserver((entries) => {
@@ -76,6 +77,7 @@ export class NgxScrollerComponent {
                 this.intersections.last = entries[1];
                 break;
         }
+        this.offsetable ||= !this.intersections.last!.isIntersecting && !this.intersections.first!.isIntersecting;
         this.shiftable ||= !this.intersections.last!.isIntersecting;
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
@@ -110,9 +112,9 @@ export class NgxScrollerComponent {
             if (offset > children.length - 2) offset = children.length - 2 >= 0 ? children.length - 2 : 0;
             if (this.reverse()) {
                 this.intersection$.observe(children[children.length - 1 - offset]);
-                this.intersection$.observe(children[offset]);
+                this.intersection$.observe(children[this.offsetable ? offset : 0]);
             } else {
-                this.intersection$.observe(children[offset]);
+                this.intersection$.observe(children[this.offsetable ? offset : 0]);
                 this.intersection$.observe(children[children.length - 1 - offset]);
             }
             onCleanup(() => this.intersection$.disconnect());
