@@ -49,21 +49,18 @@ export class NgxScrollerComponent {
     );
 
     private filled = false;
-    private intersections = { first: null as HTMLElement | null, last: null as HTMLElement | null };
+    private intersections = { first: null as IntersectionObserverEntry | null, last: null as IntersectionObserverEntry | null };
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
             case 1:
-                const children = Array.from(this.elementRef.nativeElement.children);
-                const index = children.indexOf(entries[0].target);
-                const isLast = this.reverse() ? index <= children.length - 1 - index : children.length - 1 - index <= index;
-                if (isLast) {
+                if (entries[0].target === this.intersections.last?.target) {
                     if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
                     else if (entries[0].isIntersecting) this.updateContent(this.batch());
-                    this.intersections.last = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
+                    this.intersections.last = entries[0]
                 } else {
                     if (entries[0].isIntersecting && this.start() <= 0) this.first.emit();
                     else if (entries[0].isIntersecting) this.updateContent(-this.batch());
-                    this.intersections.first = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
+                    this.intersections.first = entries[0]
                 }
                 break;
             case 2:
@@ -74,19 +71,20 @@ export class NgxScrollerComponent {
                     if (entries[0].isIntersecting) this.updateContent(-this.batch());
                     else if (entries[1].isIntersecting) this.updateContent(this.batch());
                 }
-                this.intersections.first = entries[0].isIntersecting ? entries[0].target as HTMLElement : null;
-                this.intersections.last = entries[1].isIntersecting ? entries[1].target as HTMLElement : null;
+                this.intersections.first = entries[0];
+                this.intersections.last = entries[1];
                 break;
         }
-        this.filled ||= !this.intersections.last;
+        this.filled ||= !this.intersections.last!.isIntersecting;
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
         threshold: this.threshold()
     });
 
     private unshiftContent$ = effect(() => this.content().length && untracked(() => {
-        const child = this.reverse() ? this.intersections.last : this.intersections.first;
-        if (!child) return;
+        const intersection = this.reverse() ? this.intersections.last : this.intersections.first;
+        if (!intersection?.isIntersecting) return;
+        const child = intersection.target as HTMLElement;
         const left = this.filled
             ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
             : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
@@ -132,7 +130,7 @@ export class NgxScrollerComponent {
     private updateContent(batch: number, virtualize = this.virtualize()): void {
         if (this.start() + batch < 0) batch = -this.start();
         if (this.end() + batch > this.items().length) batch = this.items().length - this.end();
-        if (batch < 0 || (virtualize && !this.intersections.first)) this.start.update((start) => start + batch);
-        if (batch > 0 || (virtualize && !this.intersections.last)) this.end.update((end) => end + batch);
+        if (batch < 0 || (virtualize && !this.intersections.first?.isIntersecting)) this.start.update((start) => start + batch);
+        if (batch > 0 || (virtualize && !this.intersections.last?.isIntersecting)) this.end.update((end) => end + batch);
     }
 }
