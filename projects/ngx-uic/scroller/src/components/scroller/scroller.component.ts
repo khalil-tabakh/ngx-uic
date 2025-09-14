@@ -51,6 +51,7 @@ export class NgxScrollerComponent {
     private intersections = { first: null as IntersectionObserverEntry | null, last: null as IntersectionObserverEntry | null };
     private offsetable = false;
     private shiftable = false;
+    private virtualizable = false;
 
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
@@ -79,6 +80,7 @@ export class NgxScrollerComponent {
         }
         this.offsetable ||= !this.intersections.last!.isIntersecting && !this.intersections.first!.isIntersecting;
         this.shiftable ||= !this.intersections.last!.isIntersecting;
+        this.virtualizable ||= Array.from(this.elementRef.nativeElement.children).indexOf(this.intersections.first!.target) >= (Number(this.offset()) || 0);
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
         threshold: this.threshold()
@@ -130,7 +132,7 @@ export class NgxScrollerComponent {
         }
     });
 
-    private updateContent(batch: number, virtualize = this.virtualize()): void {
+    private updateContent(batch: number, virtualize = this.virtualize() && this.virtualizable): void {
         if (this.start() + batch < 0) batch = -this.start();
         if (this.end() + batch > this.items().length) batch = this.items().length - this.end();
         if (batch < 0 || (virtualize && !this.intersections.first?.isIntersecting)) this.start.update((start) => start + batch);
