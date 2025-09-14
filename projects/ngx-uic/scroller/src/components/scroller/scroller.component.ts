@@ -48,8 +48,9 @@ export class NgxScrollerComponent {
         : this.items().slice(this.start(), this.end())
     );
 
-    private filled = false;
     private intersections = { first: null as IntersectionObserverEntry | null, last: null as IntersectionObserverEntry | null };
+    private shiftable = false;
+
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
             case 1:
@@ -75,7 +76,7 @@ export class NgxScrollerComponent {
                 this.intersections.last = entries[1];
                 break;
         }
-        this.filled ||= !this.intersections.last!.isIntersecting;
+        this.shiftable ||= !this.intersections.last!.isIntersecting;
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
         threshold: this.threshold()
@@ -85,15 +86,15 @@ export class NgxScrollerComponent {
         const intersection = this.reverse() ? this.intersections.last : this.intersections.first;
         if (!intersection?.isIntersecting) return;
         const child = intersection.target as HTMLElement;
-        const left = this.filled
+        const left = this.shiftable
             ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
             : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
-        const top = this.filled
+        const top = this.shiftable
             ? this.elementRef.nativeElement.scrollTop - child.offsetTop
             : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
         afterNextRender({
             write: () => {
-                if (this.filled) {
+                if (this.shiftable) {
                     child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
                     this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
                 } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
