@@ -56,14 +56,14 @@ export class NgxScrollerComponent {
     private intersection$ = new IntersectionObserver((entries) => {
         switch (entries.length) {
             case 1:
-                if (entries[0].target === this.intersections.last?.target) {
-                    if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
-                    else if (entries[0].isIntersecting) this.updateContent(this.batch());
-                    this.intersections.last = entries[0]
-                } else {
+                if (entries[0].target === this.intersections.first?.target) {
                     if (entries[0].isIntersecting && this.start() <= 0) this.first.emit();
                     else if (entries[0].isIntersecting) this.updateContent(-this.batch());
-                    this.intersections.first = entries[0]
+                    this.intersections.first = entries[0];
+                } else {
+                    if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
+                    else if (entries[0].isIntersecting) this.updateContent(this.batch());
+                    this.intersections.last = entries[0];
                 }
                 break;
             case 2:
@@ -107,28 +107,23 @@ export class NgxScrollerComponent {
     }));
 
     private observeContent$ = afterRenderEffect({
-        read: (onCleanup) => {
-            if (!this.content().length) return;
-            const children = this.elementRef.nativeElement.children;
-            let offset = Number(this.offset()) || 0;
-            if (offset > children.length - 2) offset = children.length - 2 >= 0 ? children.length - 2 : 0;
-            if (this.reverse()) {
-                this.intersection$.observe(children[children.length - 1 - offset]);
-                this.intersection$.observe(children[this.offsetable ? offset : 0]);
-            } else {
-                this.intersection$.observe(children[this.offsetable ? offset : 0]);
-                this.intersection$.observe(children[children.length - 1 - offset]);
-            }
-            onCleanup(() => this.intersection$.disconnect());
-        }
-    });
-    private reverseContent$ = afterRenderEffect({
         earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
         write: (direction) => {
             this.elementRef.nativeElement.classList.toggle('column', direction() === 'column-reverse');
             this.elementRef.nativeElement.classList.toggle('row', direction() === 'row-reverse');
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
             this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
+        },
+        read: (_, onCleanup) => {
+            if (!this.content().length) return;
+            const children = this.elementRef.nativeElement.children;
+            let offset = Number(this.offset()) || 0;
+            if (offset > children.length - 2) offset = children.length - 2 >= 0 ? children.length - 2 : 0;
+            const first = this.reverse() ? children[children.length - 1 - offset] : children[this.offsetable ? offset : 0];
+            const last = this.reverse() ? children[this.offsetable ? offset : 0] : children[children.length - 1 - offset];
+            this.intersection$.observe(first);
+            this.intersection$.observe(last);
+            onCleanup(() => this.intersection$.disconnect());
         }
     });
 
