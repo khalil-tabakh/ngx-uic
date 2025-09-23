@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-scroller',
     imports: [CommonModule],
     templateUrl: './scroller.component.html',
-    styleUrl: './scroller.component.scss'
+    styleUrl: './scroller.component.scss',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NgxScrollerComponent {
     private elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
