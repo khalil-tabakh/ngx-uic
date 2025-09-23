@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, untracked } from '@angular/core';
+import { Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
@@ -23,6 +23,8 @@ export class NgxScrollerComponent {
     readonly last = output<void>();
 
     protected template = contentChild.required(TemplateRef);
+
+    private intersections = signal(new Map<Element, IntersectionObserverEntry>());
 
     private start = linkedSignal<unknown[], number>({
         source: this.items,
@@ -48,57 +50,65 @@ export class NgxScrollerComponent {
         : this.items().slice(this.start(), this.end())
     );
 
-    private intersections = { first: null as IntersectionObserverEntry | null, last: null as IntersectionObserverEntry | null };
-    private offsetable = false;
-    private shiftable = false;
-    private virtualizable = false;
+    private entries = computed(() => this.intersections().values().toArray());
+    private firstIndex = computed(() => this.entries().findIndex((entry) => entry.isIntersecting));
+    private firstOffset = computed(() => {
+        const offset = Number(this.offset()) || 0;
+        const firstOffset = offset;
+        const lastOffset = this.content().length - 1 - offset;
+        return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
+    });
+    private lastIndex = computed(() => this.entries().findLastIndex((entry) => entry.isIntersecting));
+    private lastOffset = computed(() => {
+        const offset = Number(this.offset()) || 0;
+        const lastOffset = this.content().length - 1 - offset;
+        return lastOffset > 1 ? lastOffset : this.content().length > 1 ? 1 : 0;
+    });
+
+    private emittable = false;
+    private initialized = false;
+    private filled = false;
 
     private intersection$ = new IntersectionObserver((entries) => {
-        switch (entries.length) {
-            case 1:
-                if (entries[0].target === this.intersections.first?.target) {
-                    if (entries[0].isIntersecting && this.start() <= 0) this.first.emit();
-                    else if (entries[0].isIntersecting) this.updateContent(-this.batch());
-                    this.intersections.first = entries[0];
-                } else {
-                    if (entries[0].isIntersecting && this.end() >= this.items().length) this.last.emit();
-                    else if (entries[0].isIntersecting) this.updateContent(this.batch());
-                    this.intersections.last = entries[0];
-                }
+        if (entries.length === this.content().length) this.intersections.set(new Map(entries.map(entry => [entry.target, entry])));
+        else this.intersections.update((intersections) => new Map(entries.reduce((intersections, entry) => intersections.set(entry.target, entry), intersections)));
+        this.filled ||= this.lastIndex() < this.content().length - 1;
+        this.initialized ||= this.firstIndex() > this.firstOffset();
+        switch (true) {
+            case this.lastIndex() >= this.lastOffset(): {
+                const batch = entries.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
+                const virtualize = entries.length === this.content().length ? false : this.virtualize();
+                if (this.end() < this.items().length) this.updateContent(batch, virtualize);
+                else if (this.emittable) this.emittable = Boolean(this.last.emit());
                 break;
-            case 2:
-                if (entries[0].isIntersecting && entries[1].isIntersecting) {
-                    if (this.end() >= this.items().length) this.last.emit();
-                    else this.updateContent(1, false);
-                } else {
-                    if (entries[0].isIntersecting) this.updateContent(-this.batch());
-                    else if (entries[1].isIntersecting) this.updateContent(this.batch());
-                }
-                this.intersections.first = entries[0];
-                this.intersections.last = entries[1];
+            }
+            case this.firstIndex() <= this.firstOffset(): {
+                const batch = entries.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
+                const virtualize = entries.length === this.content().length ? false : this.virtualize();
+                if (this.start() > 0) this.updateContent(batch, virtualize);
+                else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                 break;
+            }
         }
-        this.offsetable ||= !this.intersections.last!.isIntersecting && !this.intersections.first!.isIntersecting;
-        this.shiftable ||= !this.intersections.last!.isIntersecting;
-        this.virtualizable ||= Array.from(this.elementRef.nativeElement.children).indexOf(this.intersections.first!.target) >= (Number(this.offset()) || 0);
     }, {
         rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
         threshold: this.threshold()
     });
 
+    private unblockEmitters$ = effect(() => this.emittable = Boolean(this.items()));
     private unshiftContent$ = effect(() => this.content().length && untracked(() => {
-        const intersection = this.reverse() ? this.intersections.last : this.intersections.first;
-        if (!intersection?.isIntersecting) return;
-        const child = intersection.target as HTMLElement;
-        const left = this.shiftable
+        const entry = this.reverse() ? this.entries().at(-1) : this.entries().at(0);
+        if (!entry?.isIntersecting) return;
+        const child = entry.target as HTMLElement;
+        const left = this.filled
             ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
             : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
-        const top = this.shiftable
+        const top = this.filled
             ? this.elementRef.nativeElement.scrollTop - child.offsetTop
             : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
         afterNextRender({
             write: () => {
-                if (this.shiftable) {
+                if (this.filled) {
                     child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
                     this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
                 } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
@@ -114,23 +124,31 @@ export class NgxScrollerComponent {
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
             this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
         },
-        read: (_, onCleanup) => {
-            if (!this.content().length) return;
-            const children = this.elementRef.nativeElement.children;
-            let offset = Number(this.offset()) || 0;
-            if (offset > children.length - 2) offset = children.length - 2 >= 0 ? children.length - 2 : 0;
-            const first = this.reverse() ? children[children.length - 1 - offset] : children[this.offsetable ? offset : 0];
-            const last = this.reverse() ? children[this.offsetable ? offset : 0] : children[children.length - 1 - offset];
-            this.intersection$.observe(first);
-            this.intersection$.observe(last);
+        read: (_, onCleanup) => this.content().length && untracked(() => {
+            const children = this.reverse()
+                ? Array.from(this.elementRef.nativeElement.children).reverse()
+                : Array.from(this.elementRef.nativeElement.children);
+            for (const child of children) this.intersection$.observe(child);
             onCleanup(() => this.intersection$.disconnect());
-        }
+        })
     });
 
-    private updateContent(batch: number, virtualize = this.virtualize() && this.virtualizable): void {
-        if (this.start() + batch < 0) batch = -this.start();
-        if (this.end() + batch > this.items().length) batch = this.items().length - this.end();
-        if (batch < 0 || (virtualize && !this.intersections.first?.isIntersecting)) this.start.update((start) => start + batch);
-        if (batch > 0 || (virtualize && !this.intersections.last?.isIntersecting)) this.end.update((end) => end + batch);
+    private updateContent(batch: number, virtualize: boolean): void {
+        switch (true) {
+            case batch < 0: {
+                const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
+                const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
+                this.start.update((start) => start + firstBatch);
+                if (virtualize) this.end.update((end) => end + lastBatch);
+                break;
+            }
+            case batch > 0: {
+                const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
+                const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
+                this.end.update((end) => end + lastBatch);
+                if (virtualize) this.start.update((start) => start + firstBatch);
+                break;
+            }
+        }
     }
 }
