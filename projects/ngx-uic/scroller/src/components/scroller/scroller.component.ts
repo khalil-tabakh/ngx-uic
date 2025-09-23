@@ -78,15 +78,23 @@ export class NgxScrollerComponent {
             case this.lastIndex() >= this.lastOffset(): {
                 const batch = entries.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
                 const virtualize = entries.length === this.content().length ? false : this.virtualize();
-                if (this.end() < this.items().length) this.updateContent(batch, virtualize);
-                else if (this.emittable) this.emittable = Boolean(this.last.emit());
+                if (this.end() < this.items().length) {
+                    const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
+                    const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
+                    this.end.update((end) => end + lastBatch);
+                    if (virtualize) this.start.update((start) => start + firstBatch);
+                } else if (this.emittable) this.emittable = Boolean(this.last.emit());
                 break;
             }
             case this.firstIndex() <= this.firstOffset(): {
                 const batch = entries.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
                 const virtualize = entries.length === this.content().length ? false : this.virtualize();
-                if (this.start() > 0) this.updateContent(batch, virtualize);
-                else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
+                if (this.start() > 0) {
+                    const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
+                    const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
+                    this.start.update((start) => start + firstBatch);
+                    if (virtualize) this.end.update((end) => end + lastBatch);
+                } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                 break;
             }
         }
@@ -132,23 +140,4 @@ export class NgxScrollerComponent {
             onCleanup(() => this.intersection$.disconnect());
         })
     });
-
-    private updateContent(batch: number, virtualize: boolean): void {
-        switch (true) {
-            case batch < 0: {
-                const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
-                const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
-                this.start.update((start) => start + firstBatch);
-                if (virtualize) this.end.update((end) => end + lastBatch);
-                break;
-            }
-            case batch > 0: {
-                const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
-                const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
-                this.end.update((end) => end + lastBatch);
-                if (virtualize) this.start.update((start) => start + firstBatch);
-                break;
-            }
-        }
-    }
 }
