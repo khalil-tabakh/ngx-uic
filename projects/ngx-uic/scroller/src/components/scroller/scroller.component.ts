@@ -57,8 +57,8 @@ export class NgxScrollerComponent<Item> {
     private firstIndex = computed(() => this.intersections().findIndex((intersection) => intersection.isIntersecting));
     private firstOffset = computed(() => {
         const offset = Number(this.offset()) || 0;
-        const firstOffset = offset;
         const lastOffset = this.content().length - 1 - offset;
+        const firstOffset = offset;
         return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
     });
     private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
@@ -78,28 +78,26 @@ export class NgxScrollerComponent<Item> {
                 this.filled ||= this.lastIndex() < this.content().length - 1;
                 this.initialized ||= this.firstIndex() > this.firstOffset();
                 switch (true) {
-                    case this.lastIndex() >= this.lastOffset(): {
-                        const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
-                        const virtualize = intersections.length === this.content().length ? false : this.virtualize();
+                    case this.lastIndex() >= this.lastOffset():
                         if (this.end() < this.items().length) {
+                            const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
                             const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
                             const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
+                            const virtualize = intersections.length === this.content().length ? false : this.virtualize();
                             this.end.update((end) => end + lastBatch);
                             if (virtualize) this.start.update((start) => start + firstBatch);
                         } else if (this.emittable) this.emittable = Boolean(this.last.emit());
                         break;
-                    }
-                    case this.firstIndex() <= this.firstOffset(): {
-                        const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
-                        const virtualize = intersections.length === this.content().length ? false : this.virtualize();
+                    case this.firstIndex() <= this.firstOffset():
                         if (this.start() > 0) {
+                            const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
                             const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
                             const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
+                            const virtualize = intersections.length === this.content().length ? false : this.virtualize();
                             this.start.update((start) => start + firstBatch);
                             if (virtualize) this.end.update((end) => end + lastBatch);
                         } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                         break;
-                    }
                 }
             }, {
                 rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
