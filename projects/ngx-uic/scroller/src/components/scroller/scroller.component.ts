@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, TemplateRef, afterNextRender, afterRenderEffect, booleanAttribute, computed, contentChild, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
@@ -22,8 +22,6 @@ export class NgxScrollerComponent<Item> {
 
     readonly first = output<void>();
     readonly last = output<void>();
-
-    protected template = contentChild.required<TemplateRef<{ $implicit: Item }>>(TemplateRef);
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
 
