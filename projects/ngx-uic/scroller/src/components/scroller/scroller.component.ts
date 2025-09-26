@@ -23,6 +23,10 @@ export class NgxScrollerComponent<Item> {
     readonly first = output<void>();
     readonly last = output<void>();
 
+    private emittable = false;
+    private filled = false;
+    private initialized = false;
+
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
 
     private start = linkedSignal<Item[], number>({
@@ -64,42 +68,44 @@ export class NgxScrollerComponent<Item> {
         return lastOffset > 1 ? lastOffset : this.content().length > 1 ? 1 : 0;
     });
 
-    private emittable = false;
-    private initialized = false;
-    private filled = false;
-
-    private intersection$ = new IntersectionObserver((intersections) => {
-        if (intersections.length === this.content().length) this.entries.set(new Map(intersections.map(intersection => [intersection.target, intersection])));
-        else this.entries.update((entries) => new Map(intersections.reduce((entries, intersection) => entries.set(intersection.target, intersection), entries)));
-        this.filled ||= this.lastIndex() < this.content().length - 1;
-        this.initialized ||= this.firstIndex() > this.firstOffset();
-        switch (true) {
-            case this.lastIndex() >= this.lastOffset(): {
-                const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
-                const virtualize = intersections.length === this.content().length ? false : this.virtualize();
-                if (this.end() < this.items().length) {
-                    const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
-                    const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
-                    this.end.update((end) => end + lastBatch);
-                    if (virtualize) this.start.update((start) => start + firstBatch);
-                } else if (this.emittable) this.emittable = Boolean(this.last.emit());
-                break;
-            }
-            case this.firstIndex() <= this.firstOffset(): {
-                const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
-                const virtualize = intersections.length === this.content().length ? false : this.virtualize();
-                if (this.start() > 0) {
-                    const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
-                    const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
-                    this.start.update((start) => start + firstBatch);
-                    if (virtualize) this.end.update((end) => end + lastBatch);
-                } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
-                break;
-            }
+    private intersection$ = linkedSignal<{ offset: number | string, threshold?: number | number[] }, IntersectionObserver>({
+        source: () => ({ offset: this.offset(), threshold: this.threshold() }),
+        computation: (current, previous) => {
+            previous?.value.disconnect();
+            return new IntersectionObserver((intersections) => {
+                if (intersections.length === this.content().length) this.entries.set(new Map(intersections.map(intersection => [intersection.target, intersection])));
+                else this.entries.update((entries) => new Map(intersections.reduce((entries, intersection) => entries.set(intersection.target, intersection), entries)));
+                this.filled ||= this.lastIndex() < this.content().length - 1;
+                this.initialized ||= this.firstIndex() > this.firstOffset();
+                switch (true) {
+                    case this.lastIndex() >= this.lastOffset(): {
+                        const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
+                        const virtualize = intersections.length === this.content().length ? false : this.virtualize();
+                        if (this.end() < this.items().length) {
+                            const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
+                            const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
+                            this.end.update((end) => end + lastBatch);
+                            if (virtualize) this.start.update((start) => start + firstBatch);
+                        } else if (this.emittable) this.emittable = Boolean(this.last.emit());
+                        break;
+                    }
+                    case this.firstIndex() <= this.firstOffset(): {
+                        const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
+                        const virtualize = intersections.length === this.content().length ? false : this.virtualize();
+                        if (this.start() > 0) {
+                            const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
+                            const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
+                            this.start.update((start) => start + firstBatch);
+                            if (virtualize) this.end.update((end) => end + lastBatch);
+                        } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
+                        break;
+                    }
+                }
+            }, {
+                rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
+                threshold: current.threshold
+            });
         }
-    }, {
-        rootMargin: typeof this.offset() === 'string' ? this.offset() as string : undefined,
-        threshold: this.threshold()
     });
 
     private unblockEmitters$ = effect(() => this.emittable = Boolean(this.items()));
@@ -131,12 +137,12 @@ export class NgxScrollerComponent<Item> {
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
             this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
         },
-        read: (_, onCleanup) => this.content().length && untracked(() => {
+        read: (_, onCleanup) => this.content().length && this.intersection$() && untracked(() => {
             const children = this.reverse()
                 ? Array.from(this.elementRef.nativeElement.children).reverse()
                 : Array.from(this.elementRef.nativeElement.children);
-            for (const child of children) this.intersection$.observe(child);
-            onCleanup(() => this.intersection$.disconnect());
+            for (const child of children) this.intersection$().observe(child);
+            onCleanup(() => this.intersection$().disconnect());
         })
     });
 }
