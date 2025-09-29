@@ -35,7 +35,10 @@ export class NgxScrollerComponent<Item> {
             const oldItems = previous?.source ?? newItems;
             const oldIndex = previous?.value as number ?? 0;
             const newIndex = newItems.indexOf(oldItems[oldIndex]);
-            return newIndex > -1 ? newIndex : oldIndex;
+            if (newIndex > -1) return newIndex;
+            if (oldIndex < newItems.length) return oldIndex;
+            if (newItems.length > 0) return newItems.length - 1;
+            return 0;
         }
     });
     private end = linkedSignal<Item[], number>({
@@ -44,7 +47,10 @@ export class NgxScrollerComponent<Item> {
             const oldItems = previous?.source ?? newItems;
             const oldIndex = previous?.value as number ?? 2;
             const newIndex = newItems.indexOf(oldItems[oldIndex]);
-            return newIndex > -1 ? newIndex : oldIndex;
+            if (newIndex > -1) return newIndex;
+            if (oldIndex <= newItems.length) return oldIndex;
+            if (newItems.length > 1) return newItems.length;
+            return 2;
         }
     });
 
