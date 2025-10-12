@@ -1,12 +1,12 @@
 :host {
-    position: relative;
-    overflow: auto;
+    position: relative !important;
+    overflow: auto !important;
 
     &.column {
         flex-direction: column !important;
 
         &--reverse ::ng-deep > *:first-child {
-            margin-top: auto;
+            margin-top: auto !important;
         }
     }
 
@@ -14,7 +14,7 @@
         flex-direction: row !important;
 
         &--reverse ::ng-deep > *:first-child {
-            margin-left: auto;
+            margin-left: auto !important;
         }
     }
 }
