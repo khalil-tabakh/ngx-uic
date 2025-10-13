@@ -1,10 +1,8 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-scroller',
-    imports: [CommonModule],
     templateUrl: './scroller.component.html',
     styleUrl: './scroller.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -60,14 +58,20 @@ export class NgxScrollerComponent<Item> {
     );
     readonly intersections = computed<readonly IntersectionObserverEntry[]>(() => this.entries().values().toArray());
 
-    private firstIndex = computed(() => this.intersections().findIndex((intersection) => intersection.isIntersecting));
+    private firstIndex = computed(() => this.reverse()
+        ? this.content().length - 1 - this.intersections().findLastIndex((intersection) => intersection.isIntersecting)
+        : this.intersections().findIndex((intersection) => intersection.isIntersecting)
+    );
     private firstOffset = computed(() => {
         const offset = Number(this.offset()) || 0;
         const lastOffset = this.content().length - 1 - offset;
         const firstOffset = offset;
         return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
     });
-    private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
+    private lastIndex = computed(() => this.reverse()
+        ? this.content().length - 1 - this.intersections().findIndex((intersection) => intersection.isIntersecting)
+        : this.intersections().findLastIndex((intersection) => intersection.isIntersecting)
+    );
     private lastOffset = computed(() => {
         const offset = Number(this.offset()) || 0;
         const lastOffset = this.content().length - 1 - offset;
@@ -107,9 +111,8 @@ export class NgxScrollerComponent<Item> {
                         break;
                 }
                 // Unshift content
-                const intersection = this.reverse() ? this.intersections().at(-1) : this.intersections().at(0);
-                if (!intersection?.isIntersecting) return;
-                const child = intersection.target as HTMLElement;
+                if (!this.intersections()[0].isIntersecting) return;
+                const child = this.intersections()[0].target as HTMLElement;
                 const left = this.filled
                     ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
                     : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
@@ -141,12 +144,9 @@ export class NgxScrollerComponent<Item> {
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
             this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
         },
-        read: (_, onCleanup) => this.content().length && this.intersection$() && untracked(() => {
-            const children = this.reverse()
-                ? Array.from(this.elementRef.nativeElement.children).reverse()
-                : Array.from(this.elementRef.nativeElement.children);
-            for (const child of children) this.intersection$().observe(child);
+        read: (_, onCleanup) => {
+            for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.elementRef.nativeElement.children[i]);
             onCleanup(() => this.intersection$().disconnect());
-        })
+        }
     });
 }
