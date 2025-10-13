@@ -83,6 +83,7 @@ export class NgxScrollerComponent<Item> {
                 else this.entries.update((entries) => new Map(intersections.reduce((entries, intersection) => entries.set(intersection.target, intersection), entries)));
                 this.filled ||= this.lastIndex() < this.content().length - 1;
                 this.initialized ||= this.firstIndex() > this.firstOffset();
+                // Update content
                 switch (true) {
                     case this.lastIndex() >= this.lastOffset():
                         if (this.end() < this.items().length) {
@@ -105,6 +106,24 @@ export class NgxScrollerComponent<Item> {
                         } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                         break;
                 }
+                // Unshift content
+                const intersection = this.reverse() ? this.intersections().at(-1) : this.intersections().at(0);
+                if (!intersection?.isIntersecting) return;
+                const child = intersection.target as HTMLElement;
+                const left = this.filled
+                    ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
+                    : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
+                const top = this.filled
+                    ? this.elementRef.nativeElement.scrollTop - child.offsetTop
+                    : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
+                afterNextRender({
+                    write: () => {
+                        if (this.filled) {
+                            child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
+                            this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
+                        } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
+                    }
+                }, { injector: this.injector });
             }, {
                 rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
                 threshold: current.threshold
@@ -112,26 +131,7 @@ export class NgxScrollerComponent<Item> {
         }
     });
 
-    private unblockEmitters$ = effect(() => this.emittable = Boolean(this.items()));
-    private unshiftContent$ = effect(() => this.content().length && untracked(() => {
-        const intersection = this.reverse() ? this.intersections().at(-1) : this.intersections().at(0);
-        if (!intersection?.isIntersecting) return;
-        const child = intersection.target as HTMLElement;
-        const left = this.filled
-            ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
-            : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
-        const top = this.filled
-            ? this.elementRef.nativeElement.scrollTop - child.offsetTop
-            : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
-        afterNextRender({
-            write: () => {
-                if (this.filled) {
-                    child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
-                    this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
-                } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
-            }
-        }, { injector: this.injector });
-    }));
+    private enableEmitters$ = effect(() => this.emittable = Boolean(this.items()));
 
     private observeContent$ = afterRenderEffect({
         earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
