@@ -154,9 +154,10 @@ export class NgxScrollerComponent<Item> {
                 resize$.observe(this.elementRef.nativeElement);
                 onCleanup(() => resize$.disconnect());
             }
-            return style.flexDirection;
+            return style.display.includes('flex') ? style.flexDirection : 'unset';
         },
         write: (direction) => { // Handle reversed flex layout
+            if (direction() === 'unset') return;
             this.elementRef.nativeElement.classList.toggle('column', direction() === 'column-reverse');
             this.elementRef.nativeElement.classList.toggle('row', direction() === 'row-reverse');
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
