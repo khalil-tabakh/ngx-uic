@@ -26,6 +26,7 @@ export class NgxScrollerComponent<Item> {
     private initialized = false;
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
+    private tracks = signal(1);
 
     private start = linkedSignal<Item[], number>({
         source: this.items,
@@ -63,7 +64,9 @@ export class NgxScrollerComponent<Item> {
         : this.intersections().findIndex((intersection) => intersection.isIntersecting)
     );
     private firstOffset = computed(() => {
-        const offset = Number(this.offset()) || 0;
+        const offset = this.tracks() > 1
+            ? (Number(this.offset()) || 1) * this.tracks() - 1
+            : (Number(this.offset()) || 0);
         const lastOffset = this.content().length - 1 - offset;
         const firstOffset = offset;
         return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
@@ -73,7 +76,9 @@ export class NgxScrollerComponent<Item> {
         : this.intersections().findLastIndex((intersection) => intersection.isIntersecting)
     );
     private lastOffset = computed(() => {
-        const offset = Number(this.offset()) || 0;
+        const offset = this.tracks() > 1
+            ? (Number(this.offset()) || 1) * this.tracks() - 1
+            : (Number(this.offset()) || 0);
         const lastOffset = this.content().length - 1 - offset;
         return lastOffset > 1 ? lastOffset : this.content().length > 1 ? 1 : 0;
     });
@@ -137,8 +142,21 @@ export class NgxScrollerComponent<Item> {
     private enableEmitters$ = effect(() => this.emittable = Boolean(this.items()));
 
     private observeContent$ = afterRenderEffect({
-        earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
-        write: (direction) => {
+        earlyRead: (onCleanup) => { // Handle dynamic grid layout
+            const style = getComputedStyle(this.elementRef.nativeElement);
+            if (style.display.includes('grid')) {
+                const resize$ = new ResizeObserver(() => {
+                    const tracks = style.gridAutoFlow.includes('row')
+                        ? style.gridTemplateColumns.split(' ').length
+                        : style.gridTemplateRows.split(' ').length;
+                    this.tracks.set(tracks);
+                });
+                resize$.observe(this.elementRef.nativeElement);
+                onCleanup(() => resize$.disconnect());
+            }
+            return style.flexDirection;
+        },
+        write: (direction) => { // Handle reversed flex layout
             this.elementRef.nativeElement.classList.toggle('column', direction() === 'column-reverse');
             this.elementRef.nativeElement.classList.toggle('row', direction() === 'row-reverse');
             this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
