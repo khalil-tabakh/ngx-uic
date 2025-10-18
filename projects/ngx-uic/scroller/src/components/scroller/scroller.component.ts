@@ -14,7 +14,6 @@ export class NgxScrollerComponent<Item> {
     readonly batch = input(1, { transform: batchAttribute });
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
-    readonly reverse = input(false, { transform: booleanAttribute });
     readonly threshold = input<number | number[]>();
     readonly virtualize = input(false, { transform: booleanAttribute });
 
@@ -22,7 +21,6 @@ export class NgxScrollerComponent<Item> {
     readonly last = output<void>();
 
     private emittable = false;
-    private filled = false;
     private initialized = false;
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
@@ -53,16 +51,10 @@ export class NgxScrollerComponent<Item> {
         }
     });
 
-    readonly content = computed<readonly Item[]>(() => this.reverse()
-        ? this.items().slice(this.start(), this.end()).reverse()
-        : this.items().slice(this.start(), this.end())
-    );
+    readonly content = computed<readonly Item[]>(() => this.items().slice(this.start(), this.end()));
     readonly intersections = computed<readonly IntersectionObserverEntry[]>(() => this.entries().values().toArray());
 
-    private firstIndex = computed(() => this.reverse()
-        ? this.content().length - 1 - this.intersections().findLastIndex((intersection) => intersection.isIntersecting)
-        : this.intersections().findIndex((intersection) => intersection.isIntersecting)
-    );
+    private firstIndex = computed(() => this.intersections().findIndex((intersection) => intersection.isIntersecting));
     private firstOffset = computed(() => {
         const offset = this.tracks() > 1
             ? (Number(this.offset()) || 1) * this.tracks() - 1
@@ -71,10 +63,7 @@ export class NgxScrollerComponent<Item> {
         const firstOffset = offset;
         return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
     });
-    private lastIndex = computed(() => this.reverse()
-        ? this.content().length - 1 - this.intersections().findIndex((intersection) => intersection.isIntersecting)
-        : this.intersections().findLastIndex((intersection) => intersection.isIntersecting)
-    );
+    private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
     private lastOffset = computed(() => {
         const offset = this.tracks() > 1
             ? (Number(this.offset()) || 1) * this.tracks() - 1
@@ -90,7 +79,6 @@ export class NgxScrollerComponent<Item> {
             return new IntersectionObserver((intersections) => {
                 if (intersections.length === this.content().length) this.entries.set(new Map(intersections.map(intersection => [intersection.target, intersection])));
                 else this.entries.update((entries) => new Map(intersections.reduce((entries, intersection) => entries.set(intersection.target, intersection), entries)));
-                this.filled ||= this.lastIndex() < this.content().length - 1;
                 this.initialized ||= this.firstIndex() > this.firstOffset();
                 // Update content
                 switch (true) {
@@ -118,18 +106,13 @@ export class NgxScrollerComponent<Item> {
                 // Unshift content
                 if (!this.intersections()[0].isIntersecting) return;
                 const child = this.intersections()[0].target as HTMLElement;
-                const left = this.filled
-                    ? this.elementRef.nativeElement.scrollLeft - child.offsetLeft
-                    : this.elementRef.nativeElement.scrollWidth * (this.reverse() ? 1 : -1);
-                const top = this.filled
-                    ? this.elementRef.nativeElement.scrollTop - child.offsetTop
-                    : this.elementRef.nativeElement.scrollHeight * (this.reverse() ? 1 : -1);
+                const { scrollLeft, scrollTop } = this.elementRef.nativeElement;
                 afterNextRender({
-                    write: () => {
-                        if (this.filled) {
-                            child.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'start' });
-                            this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: left, top: top });
-                        } else this.elementRef.nativeElement.scrollTo({ behavior: 'instant', left: left, top: top });
+                    earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
+                    write: (direction) => { // Handle reversed flex layout
+                        const position: ScrollLogicalPosition = direction.includes('reverse') ? 'end' : 'start';
+                        child.scrollIntoView({ behavior: 'instant', block: position, inline: position });
+                        this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: scrollLeft, top: scrollTop });
                     }
                 }, { injector: this.injector });
             }, {
@@ -144,24 +127,15 @@ export class NgxScrollerComponent<Item> {
     private observeContent$ = afterRenderEffect({
         earlyRead: (onCleanup) => { // Handle dynamic grid layout
             const style = getComputedStyle(this.elementRef.nativeElement);
-            if (style.display.includes('grid')) {
-                const resize$ = new ResizeObserver(() => {
-                    const tracks = style.gridAutoFlow.includes('row')
-                        ? style.gridTemplateColumns.split(' ').length
-                        : style.gridTemplateRows.split(' ').length;
-                    this.tracks.set(tracks);
-                });
-                resize$.observe(this.elementRef.nativeElement);
-                onCleanup(() => resize$.disconnect());
-            }
-            return style.display.includes('flex') ? style.flexDirection : 'unset';
-        },
-        write: (direction) => { // Handle reversed flex layout
-            if (direction() === 'unset') return;
-            this.elementRef.nativeElement.classList.toggle('column', direction() === 'column-reverse');
-            this.elementRef.nativeElement.classList.toggle('row', direction() === 'row-reverse');
-            this.elementRef.nativeElement.classList.toggle('column--reverse', direction().includes('column') && this.reverse());
-            this.elementRef.nativeElement.classList.toggle('row--reverse', direction().includes('row') && this.reverse());
+            if (!style.display.includes('grid')) return;
+            const resize$ = new ResizeObserver(() => {
+                const tracks = style.gridAutoFlow.includes('row')
+                    ? style.gridTemplateColumns.split(' ').length
+                    : style.gridTemplateRows.split(' ').length;
+                this.tracks.set(tracks);
+            });
+            resize$.observe(this.elementRef.nativeElement);
+            onCleanup(() => resize$.disconnect());
         },
         read: (_, onCleanup) => {
             for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.elementRef.nativeElement.children[i]);
