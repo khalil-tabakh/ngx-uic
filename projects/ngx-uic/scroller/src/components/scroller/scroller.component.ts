@@ -113,6 +113,7 @@ export class NgxScrollerComponent<Item> {
                     }
                 }, { injector: this.injector });
             }, {
+                root: this.elementRef.nativeElement,
                 rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
                 threshold: current.threshold
             });
