@@ -60,8 +60,7 @@ export class NgxScrollerComponent<Item> {
             ? (Number(this.offset()) || 1) * this.tracks() - 1
             : (Number(this.offset()) || 0);
         const lastOffset = this.content().length - 1 - offset;
-        const firstOffset = offset;
-        return firstOffset < lastOffset ? firstOffset : lastOffset > 0 ? lastOffset - 1 : 0;
+        return offset < lastOffset ? offset : lastOffset > 0 ? lastOffset - 1 : 0;
     });
     private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
     private lastOffset = computed(() => {
@@ -87,9 +86,8 @@ export class NgxScrollerComponent<Item> {
                             const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
                             const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
                             const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
-                            const virtualize = intersections.length === this.content().length ? false : this.virtualize();
                             this.end.update((end) => end + lastBatch);
-                            if (virtualize) this.start.update((start) => start + firstBatch);
+                            if (this.virtualize()) this.start.update((start) => start + firstBatch);
                         } else if (this.emittable) this.emittable = Boolean(this.last.emit());
                         break;
                     case this.firstIndex() <= this.firstOffset():
@@ -97,9 +95,8 @@ export class NgxScrollerComponent<Item> {
                             const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
                             const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
                             const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
-                            const virtualize = intersections.length === this.content().length ? false : this.virtualize();
                             this.start.update((start) => start + firstBatch);
-                            if (virtualize) this.end.update((end) => end + lastBatch);
+                            if (this.virtualize()) this.end.update((end) => end + lastBatch);
                         } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                         break;
                 }
