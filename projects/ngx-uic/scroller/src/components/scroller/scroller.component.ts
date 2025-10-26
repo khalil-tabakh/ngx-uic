@@ -8,7 +8,7 @@ import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NgxScrollerComponent<Item> {
-    private elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private injector = inject(Injector);
 
     readonly batch = input(1, { transform: batchAttribute });
@@ -22,6 +22,7 @@ export class NgxScrollerComponent<Item> {
 
     private emittable = false;
     private initialized = false;
+    private style!: CSSStyleDeclaration;
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
     private tracks = signal(1);
@@ -76,14 +77,17 @@ export class NgxScrollerComponent<Item> {
         computation: (current, previous) => {
             previous?.value.disconnect();
             return new IntersectionObserver((intersections) => {
-                if (intersections.length === this.content().length) this.entries.set(new Map(intersections.map(intersection => [intersection.target, intersection])));
-                else this.entries.update((entries) => new Map(intersections.reduce((entries, intersection) => entries.set(intersection.target, intersection), entries)));
+                const reobserved = intersections.length === this.content().length;
+                if (reobserved) this.entries.set(new Map(intersections.map((entry) => [entry.target, entry])));
+                else this.entries.update((entries) => {
+                    return new Map(intersections.reduce((entries, entry) => entries.set(entry.target, entry), entries));
+                });
                 this.initialized ||= this.firstIndex() > this.firstOffset();
                 // Update content
                 switch (true) {
                     case this.lastIndex() >= this.lastOffset():
                         if (this.end() < this.items().length) {
-                            const batch = intersections.length === this.content().length ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
+                            const batch = reobserved ? this.lastIndex() - this.lastOffset() + 1 : this.batch();
                             const firstBatch = this.firstIndex() - 1 > this.firstOffset() ? this.firstIndex() - 1 - this.firstOffset() : 0;
                             const lastBatch = this.end() + batch > this.items().length ? this.items().length - this.end() : batch;
                             this.end.update((end) => end + lastBatch);
@@ -92,7 +96,7 @@ export class NgxScrollerComponent<Item> {
                         break;
                     case this.firstIndex() <= this.firstOffset():
                         if (this.start() > 0) {
-                            const batch = intersections.length === this.content().length ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
+                            const batch = reobserved ? this.firstIndex() - this.firstOffset() - 1 : -this.batch();
                             const firstBatch = this.start() + batch < 0 ? -this.start() : batch;
                             const lastBatch = this.lastIndex() + 1 < this.lastOffset() ? this.lastIndex() + 1 - this.lastOffset() : 0;
                             this.start.update((start) => start + firstBatch);
@@ -103,17 +107,17 @@ export class NgxScrollerComponent<Item> {
                 // Unshift content
                 if (!this.intersections()[0].isIntersecting) return;
                 const child = this.intersections()[0].target as HTMLElement;
-                const { scrollLeft, scrollTop } = this.elementRef.nativeElement;
+                const { scrollLeft, scrollTop } = this.element;
                 afterNextRender({
-                    earlyRead: () => getComputedStyle(this.elementRef.nativeElement).flexDirection,
+                    earlyRead: () => this.style.flexDirection,
                     write: (direction) => { // Handle reversed flex layout
                         const position: ScrollLogicalPosition = direction.includes('reverse') ? 'end' : 'start';
                         child.scrollIntoView({ behavior: 'instant', block: position, inline: position });
-                        this.elementRef.nativeElement.scrollBy({ behavior: 'instant', left: scrollLeft, top: scrollTop });
+                        this.element.scrollBy({ behavior: 'instant', left: scrollLeft, top: scrollTop });
                     }
                 }, { injector: this.injector });
             }, {
-                root: this.elementRef.nativeElement,
+                root: this.element,
                 rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
                 threshold: current.threshold
             });
@@ -124,19 +128,19 @@ export class NgxScrollerComponent<Item> {
 
     private observeContent$ = afterRenderEffect({
         earlyRead: (onCleanup) => { // Handle dynamic grid layout
-            const style = getComputedStyle(this.elementRef.nativeElement);
-            if (!style.display.includes('grid')) return;
+            this.style = getComputedStyle(this.element);
+            if (!this.style.display.includes('grid')) return;
             const resize$ = new ResizeObserver(() => {
-                const tracks = style.gridAutoFlow.includes('row')
-                    ? style.gridTemplateColumns.split(' ').length
-                    : style.gridTemplateRows.split(' ').length;
+                const tracks = this.style.gridAutoFlow.includes('row')
+                    ? this.style.gridTemplateColumns.split(' ').length
+                    : this.style.gridTemplateRows.split(' ').length;
                 this.tracks.set(tracks);
             });
-            resize$.observe(this.elementRef.nativeElement);
+            resize$.observe(this.element);
             onCleanup(() => resize$.disconnect());
         },
         read: (_, onCleanup) => {
-            for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.elementRef.nativeElement.children[i]);
+            for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.element.children[i]);
             onCleanup(() => this.intersection$().disconnect());
         }
     });
