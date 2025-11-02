@@ -14,6 +14,7 @@ export class NgxScrollerComponent<Item> {
     readonly batch = input(1, { transform: batchAttribute });
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
+    readonly rootMargin = input<string>();
     readonly threshold = input<number | number[]>();
     readonly virtualize = input(false, { transform: booleanAttribute });
 
@@ -59,8 +60,8 @@ export class NgxScrollerComponent<Item> {
     private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
     private lastOffset = computed(() => Math.max(this.lastIndex(), this.getOffset('findLastIndex')));
 
-    private intersection$ = linkedSignal<{ offset: number | string, threshold?: number | number[] }, IntersectionObserver>({
-        source: () => ({ offset: this.offset(), threshold: this.threshold() }),
+    private intersection$ = linkedSignal<{ rootMargin?: string, threshold?: number | number[] }, IntersectionObserver>({
+        source: () => ({ rootMargin: this.rootMargin(), offset: this.offset(), threshold: this.threshold() }),
         computation: (current, previous) => {
             previous?.value.disconnect();
             return new IntersectionObserver((intersections) => {
@@ -103,7 +104,7 @@ export class NgxScrollerComponent<Item> {
                 }, { injector: this.injector });
             }, {
                 root: this.element,
-                rootMargin: typeof current.offset === 'string' ? current.offset : undefined,
+                rootMargin: current.rootMargin,
                 threshold: current.threshold
             });
         }
@@ -123,7 +124,7 @@ export class NgxScrollerComponent<Item> {
         const reversed = this.style.flexDirection.includes('reverse');
         const position = this.element.scrollWidth > this.element.clientWidth ? 'top' : 'left';
         const size = this.element.scrollWidth > this.element.clientWidth ? 'height' : 'width';
-        let offset = Number(this.offset()) || 0;
+        let offset = this.offset();
         return this.intersections()[finder]((intersection, index, intersections) => {
             const currentMesures = intersection.boundingClientRect;
             const nextMesures = intersections[index + 1]?.boundingClientRect;
