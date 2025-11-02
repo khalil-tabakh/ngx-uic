@@ -73,25 +73,21 @@ export class NgxScrollerComponent<Item> {
                 // Update content
                 const template = this.style.gridAutoFlow.includes('row') ? this.style.gridTemplateColumns : this.style.gridTemplateRows;
                 const tracks = this.style.display.includes('grid') ? template.split(' ').length : 1;
-                switch (true) {
-                    case this.lastIndex() >= this.lastOffset():
-                        if (this.end() < this.items().length) {
-                            const batch = reobserved ? this.lastIndex() - this.lastOffset() + tracks : this.batch() * tracks;
-                            const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
-                            const lastBatch = Math.min(batch, this.items().length - this.end());
-                            this.end.update((end) => end + lastBatch);
-                            if (this.virtualize()) this.start.update((start) => start + firstBatch);
-                        } else if (this.emittable) this.emittable = Boolean(this.last.emit());
-                        break;
-                    case this.firstIndex() <= this.firstOffset():
-                        if (this.start() > 0) {
-                            const batch = reobserved ? this.firstOffset() - this.firstIndex() + tracks : this.batch() * tracks;
-                            const firstBatch = Math.min(batch, this.start());
-                            const lastBatch = Math.max(0, this.lastOffset() - this.lastIndex() - 1);
-                            this.start.update((start) => start - firstBatch);
-                            if (this.virtualize()) this.end.update((end) => end - lastBatch);
-                        } else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
-                        break;
+                if (this.lastIndex() >= this.lastOffset()) {
+                    const batch = reobserved ? this.lastIndex() - this.lastOffset() + tracks : this.batch() * tracks;
+                    const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
+                    const lastBatch = Math.min(batch, this.items().length - this.end());
+                    if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
+                    else if (this.emittable) this.emittable = Boolean(this.last.emit());
+                    if (this.virtualize()) this.start.update((start) => start + firstBatch);
+                }
+                if (this.firstIndex() <= this.firstOffset()) {
+                    const batch = reobserved ? this.firstOffset() - this.firstIndex() + tracks : this.batch() * tracks;
+                    const firstBatch = Math.min(batch, this.start());
+                    const lastBatch = Math.max(0, this.lastOffset() - this.lastIndex() - 1);
+                    if (this.start() > 0) this.start.update((start) => start - firstBatch);
+                    else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
+                    if (this.virtualize()) this.end.update((end) => end - lastBatch);
                 }
                 // Unshift content
                 if (!this.intersections()[0].isIntersecting) return;
