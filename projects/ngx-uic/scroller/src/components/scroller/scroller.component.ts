@@ -58,9 +58,9 @@ export class NgxScrollerComponent<Item> {
     readonly intersections = computed<readonly IntersectionObserverEntry[]>(() => this.entries().values().toArray());
 
     private firstIndex = computed(() => this.intersections().findIndex((intersection) => intersection.isIntersecting));
-    private firstOffset = computed(() => Math.min(this.firstIndex(), this.getOffset('findIndex')));
+    private firstOffset = computed(() => Math.min(this.firstIndex(), this.getItemsCount(1, this.offset()) - 1));
     private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
-    private lastOffset = computed(() => Math.max(this.lastIndex(), this.getOffset('findLastIndex')));
+    private lastOffset = computed(() => Math.max(this.lastIndex(), this.intersections().length - this.getItemsCount(-1, this.offset())));
 
     private intersection$ = linkedSignal<{ root: HTMLElement, rootMargin?: string, threshold?: number | number[] }, IntersectionObserver>({
         source: () => ({ root: this.root(), rootMargin: this.rootMargin(), offset: this.offset(), threshold: this.threshold() }),
@@ -75,9 +75,9 @@ export class NgxScrollerComponent<Item> {
                 this.initialized ||= this.firstIndex() > this.firstOffset();
                 // Update content
                 const template = this.style.gridAutoFlow.includes('row') ? this.style.gridTemplateColumns : this.style.gridTemplateRows;
-                const tracks = this.style.display.includes('grid') ? template.split(' ').length : 1;
                 if (this.lastIndex() >= this.lastOffset()) {
-                    const batch = reobserved ? this.lastIndex() - this.lastOffset() + tracks : this.batch() * tracks;
+                    const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(-1, 0);
+                    const batch = reobserved ? this.lastIndex() - this.lastOffset() + count : this.batch() * count;
                     const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
                     const lastBatch = Math.min(batch, this.items().length - this.end());
                     if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
@@ -85,7 +85,8 @@ export class NgxScrollerComponent<Item> {
                     if (this.virtualize()) this.start.update((start) => start + firstBatch);
                 }
                 if (this.firstIndex() <= this.firstOffset()) {
-                    const batch = reobserved ? this.firstOffset() - this.firstIndex() + tracks : this.batch() * tracks;
+                    const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(1, 0);
+                    const batch = reobserved ? this.firstOffset() - this.firstIndex() + count : this.batch() * count;
                     const firstBatch = Math.min(batch, this.start());
                     const lastBatch = Math.max(0, this.lastOffset() - this.lastIndex() - 1);
                     if (this.start() > 0) this.start.update((start) => start - firstBatch);
@@ -122,18 +123,19 @@ export class NgxScrollerComponent<Item> {
         }
     });
 
-    private getOffset(finder: 'findIndex' | 'findLastIndex'): number {
+    private getItemsCount(direction: 1 | -1, tracks: number): number {
+        const finder = direction === 1 ? 'findIndex' : 'findLastIndex';
         const reversed = this.style.flexDirection.includes('reverse');
         const position = this.root().scrollWidth > this.root().clientWidth ? 'top' : 'left';
         const size = this.root().scrollWidth > this.root().clientWidth ? 'height' : 'width';
-        let offset = this.offset();
-        return this.intersections()[finder]((intersection, index, intersections) => {
+        const index = this.intersections()[finder]((intersection, index, intersections) => {
             const currentMesures = intersection.boundingClientRect;
-            const nextMesures = intersections[index + 1]?.boundingClientRect;
+            const nextMesures = intersections[index + direction]?.boundingClientRect;
             if (!nextMesures) return true;
-            return reversed
-                ? Math.floor(nextMesures[position]) > Math.ceil(currentMesures[position] - currentMesures[size]) && !offset--
-                : Math.ceil(nextMesures[position]) < Math.floor(currentMesures[position] + currentMesures[size]) && !offset--;
+            return Number(reversed) ^ Number(direction === -1)
+                ? Math.floor(nextMesures[position] + nextMesures[size]) > Math.ceil(currentMesures[position]) && !tracks--
+                : Math.floor(currentMesures[position] + currentMesures[size]) > Math.ceil(nextMesures[position]) && !tracks--;
         });
+        return direction === -1 ? this.intersections().length - index : index + 1;
     }
 }
