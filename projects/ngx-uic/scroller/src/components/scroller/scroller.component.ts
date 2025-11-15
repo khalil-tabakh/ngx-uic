@@ -12,6 +12,7 @@ export class NgxScrollerComponent<Item> {
     private injector = inject(Injector);
 
     readonly batch = input(1, { transform: batchAttribute });
+    readonly container = input<Element>(this.element);
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
     readonly root = input(this.element);
@@ -114,9 +115,9 @@ export class NgxScrollerComponent<Item> {
     private enableEmitters$ = effect(() => this.emittable = Boolean(this.items()));
 
     private observeContent$ = afterRenderEffect({
-        earlyRead: () => (this.style = getComputedStyle(this.element)),
+        earlyRead: () => (this.style = getComputedStyle(this.container())),
         read: (_, onCleanup) => {
-            for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.element.children[i]);
+            for (let i = 0; i < this.content().length; ++i) this.intersection$().observe(this.container().children[i]);
             onCleanup(() => this.intersection$().disconnect());
         }
     });
