@@ -78,7 +78,7 @@ export class NgxScrollerComponent<Item> {
                 const template = this.style.gridAutoFlow.includes('row') ? this.style.gridTemplateColumns : this.style.gridTemplateRows;
                 if (this.lastIndex() >= this.lastOffset()) {
                     const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(-1, 0);
-                    const batch = reobserved ? this.lastIndex() - this.lastOffset() + count : this.batch() * count;
+                    const batch = reobserved ? count : this.batch() * count;
                     const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
                     const lastBatch = Math.min(batch, this.items().length - this.end());
                     if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
@@ -87,7 +87,7 @@ export class NgxScrollerComponent<Item> {
                 }
                 if (this.firstIndex() <= this.firstOffset()) {
                     const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(1, 0);
-                    const batch = reobserved ? this.firstOffset() - this.firstIndex() + count : this.batch() * count;
+                    const batch = reobserved ? count : this.batch() * count;
                     const firstBatch = Math.min(batch, this.start());
                     const lastBatch = Math.max(0, this.lastOffset() - this.lastIndex() - 1);
                     if (this.start() > 0) this.start.update((start) => start - firstBatch);
