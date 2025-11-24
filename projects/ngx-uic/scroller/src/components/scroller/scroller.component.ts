@@ -2,9 +2,10 @@ import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRend
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
-    selector: 'ngx-scroller',
+    selector: 'ngx-scroller, [ngx-scroller]',
     templateUrl: './scroller.component.html',
     styleUrl: './scroller.component.scss',
+    exportAs: 'ngxScroller',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NgxScrollerComponent<Item> {
