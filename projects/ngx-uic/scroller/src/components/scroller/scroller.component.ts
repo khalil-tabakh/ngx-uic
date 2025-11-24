@@ -74,6 +74,7 @@ export class NgxScrollerComponent<Item> {
                 });
                 this.initialized ||= this.firstIndex() > this.firstOffset();
                 // Update content
+                const oldStart = this.start();
                 const template = this.style.gridAutoFlow.includes('row') ? this.style.gridTemplateColumns : this.style.gridTemplateRows;
                 if (this.lastIndex() >= this.lastOffset()) {
                     const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(-1, 0);
@@ -93,23 +94,27 @@ export class NgxScrollerComponent<Item> {
                     else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
                     if (this.virtualize()) this.end.update((end) => end - lastBatch);
                 }
+                const newStart = this.start();
                 // Unshift content
-                if (!this.intersections()[0].isIntersecting) return;
-                const child = this.intersections()[0].target as HTMLElement;
-                const { scrollLeft, scrollTop } = current.root;
+                if (newStart === oldStart) return;
+                const index = newStart > oldStart ? newStart - oldStart : 0;
+                const anchor = this.intersections()[index].target as HTMLElement;
+                const { offsetLeft: oldOffsetLeft, offsetTop: oldOffsetTop } = anchor;
+                const { scrollLeft: oldScrollLeft, scrollTop: oldScrollTop } = current.root;
                 afterNextRender({
-                    earlyRead: () => this.style.flexDirection,
-                    write: (direction) => { // Handle reversed flex layout
-                        const position: ScrollLogicalPosition = direction.includes('reverse') ? 'end' : 'start';
-                        child.scrollIntoView({ behavior: 'instant', block: position, inline: position });
-                        current.root.scrollBy({ behavior: 'instant', left: scrollLeft, top: scrollTop });
-                    }
+                    earlyRead: () => ({
+                        newOffsetLeft: anchor.offsetLeft,
+                        newOffsetTop: anchor.offsetTop,
+                        newScrollLeft: current.root.scrollLeft,
+                        newScrollTop: current.root.scrollTop
+                    }),
+                    write: ({ newOffsetLeft, newOffsetTop, newScrollLeft, newScrollTop }) => current.root.scrollBy({
+                        behavior: 'instant',
+                        left: (newOffsetLeft - oldOffsetLeft) - (newScrollLeft - oldScrollLeft),
+                        top: (newOffsetTop - oldOffsetTop) - (newScrollTop - oldScrollTop)
+                    })
                 }, { injector: this.injector });
-            }, {
-                root: current.root,
-                rootMargin: current.rootMargin,
-                threshold: current.threshold
-            });
+            }, { root: current.root, rootMargin: current.rootMargin, threshold: current.threshold });
         }
     });
 
