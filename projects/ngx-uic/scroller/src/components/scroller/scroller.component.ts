@@ -16,6 +16,7 @@ export class NgxScrollerComponent<Item> {
     readonly container = input<Element>(this.element);
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
+    readonly overflow = input(false, { transform: booleanAttribute });
     readonly root = input(this.element);
     readonly rootMargin = input<string>();
     readonly threshold = input<number | number[]>();
@@ -102,6 +103,7 @@ export class NgxScrollerComponent<Item> {
                 const anchor = this.intersections()[index].target as HTMLElement;
                 const { offsetLeft: oldOffsetLeft, offsetTop: oldOffsetTop } = anchor;
                 const { scrollLeft: oldScrollLeft, scrollTop: oldScrollTop } = current.root;
+                if (!this.overflow() && !Math.max(oldScrollLeft, oldScrollTop)) return;
                 afterNextRender({
                     earlyRead: () => ({
                         newOffsetLeft: anchor.offsetLeft,
