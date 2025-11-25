@@ -14,6 +14,7 @@ export class NgxScrollerComponent<Item> {
 
     readonly batch = input(1, { transform: batchAttribute });
     readonly container = input<Element>(this.element);
+    readonly emit = input(false, { transform: (value: boolean) => (this.autoEmit = false) || value });
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
     readonly overflow = input(false, { transform: booleanAttribute });
@@ -25,9 +26,11 @@ export class NgxScrollerComponent<Item> {
     readonly first = output<void>();
     readonly last = output<void>();
 
-    private emittable = false;
+    private autoEmit = true;
+    private canEmit = true;
     private initialized = false;
     private style!: CSSStyleDeclaration;
+    private total = 0;
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
 
@@ -84,7 +87,10 @@ export class NgxScrollerComponent<Item> {
                     const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
                     const lastBatch = Math.min(batch, this.items().length - this.end());
                     if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
-                    else if (this.emittable) this.emittable = Boolean(this.last.emit());
+                    else {
+                        const emittable = this.autoEmit ? this.canEmit : this.emit();
+                        if (emittable) this.canEmit = Boolean(this.last.emit());
+                    }
                     if (this.virtualize()) this.start.update((start) => start + firstBatch);
                 }
                 if (this.firstIndex() <= this.firstOffset()) {
@@ -93,7 +99,10 @@ export class NgxScrollerComponent<Item> {
                     const firstBatch = Math.min(batch, this.start());
                     const lastBatch = Math.max(0, this.lastOffset() - this.lastIndex() - 1);
                     if (this.start() > 0) this.start.update((start) => start - firstBatch);
-                    else if (this.emittable && this.initialized) this.emittable = Boolean(this.first.emit());
+                    else if (this.initialized) {
+                        const emittable = this.autoEmit ? this.canEmit : this.emit();
+                        if (emittable) this.canEmit = Boolean(this.first.emit());
+                    }
                     if (this.virtualize()) this.end.update((end) => end - lastBatch);
                 }
                 const newStart = this.start();
@@ -121,7 +130,11 @@ export class NgxScrollerComponent<Item> {
         }
     });
 
-    private enableEmitters$ = effect(() => this.emittable = Boolean(this.items()));
+    private enableEmitters$ = effect(() => {
+        if (!this.autoEmit) return;
+        this.canEmit = this.items().length > this.total;
+        this.total = this.items().length;
+    });
 
     private observeContent$ = afterRenderEffect({
         earlyRead: () => (this.style = getComputedStyle(this.container())),
