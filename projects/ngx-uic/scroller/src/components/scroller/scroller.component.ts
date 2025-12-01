@@ -107,7 +107,6 @@ export class NgxScrollerComponent<Item> {
                 }
                 const newStart = this.start();
                 // Unshift content
-                if (newStart === oldStart) return;
                 const index = newStart > oldStart ? newStart - oldStart : 0;
                 const anchor = this.intersections()[index].target as HTMLElement;
                 const { offsetLeft: oldOffsetLeft, offsetTop: oldOffsetTop } = anchor;
