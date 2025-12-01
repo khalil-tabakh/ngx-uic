@@ -8,7 +8,7 @@ import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
     exportAs: 'ngxScroller',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NgxScrollerComponent<Item> {
+export class NgxScrollerComponent<Item = unknown> {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private injector = inject(Injector);
 
@@ -34,7 +34,7 @@ export class NgxScrollerComponent<Item> {
 
     private entries = signal(new Map<Element, IntersectionObserverEntry>());
 
-    private start = linkedSignal<Item[], number>({
+    private start = linkedSignal<readonly Item[], number>({
         source: this.items,
         computation: (newItems, previous) => {
             const oldItems = previous?.source ?? newItems;
@@ -46,7 +46,7 @@ export class NgxScrollerComponent<Item> {
             return 0;
         }
     });
-    private end = linkedSignal<Item[], number>({
+    private end = linkedSignal<readonly Item[], number>({
         source: this.items,
         computation: (newItems, previous) => {
             const oldItems = previous?.source ?? newItems;
