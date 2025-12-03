@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, input, provideZonelessChangeDetection, viewChild } from '@angular/core';
+import { Component, ElementRef, booleanAttribute, input, provideZonelessChangeDetection, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NgxScrollerComponent } from './scroller.component';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
@@ -7,21 +7,119 @@ import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 @Component({
     imports: [CommonModule, NgxScrollerComponent],
     template: `
-        <ngx-scroller [batch]="batch()" [items]="items()" [offset]="offset()" [threshold]="threshold()">
-            <ng-template let-item>
-                <p>{{ item }}</p>
-            </ng-template>
+        <ngx-scroller
+            class="column"
+            [batch]="batch()"
+            [items]="items()"
+            [offset]="offset()"
+            [overflow]="overflow()"
+            [root]="root()"
+            [rootMargin]="rootMargin()"
+            [threshold]="threshold()"
+            [virtualize]="virtualize()"
+            (first)="onFirst()"
+            (last)="onLast()"
+            #scroller
+        >
+            @for (item of scroller.content(); track item) {
+                <div
+                    class="card"
+                    [class.card--red]="!scroller.intersections().at($index)?.isIntersecting"
+                    [class.card--green]="scroller.intersections().at($index)?.isIntersecting"
+                >
+                    {{ item }}
+                </div>
+            }
         </ngx-scroller>
+    `,
+    styles: `
+        .card {
+            display: flex;
+            color: white;
+            width: 100%;
+            aspect-ratio: 1;
+
+            &--green {
+                background-color: green;
+            }
+
+            &--red {
+                background-color: red;
+            }
+
+            &--even {
+                max-height: 200px;
+                min-height: 200px;
+            }
+
+            &--odd {
+                max-height: 400px;
+                min-height: 400px;
+            }
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+            height: 700px;
+            width: 200px;
+            overflow: auto;
+            padding: 0.5rem 0 1rem 0;
+            gap: 0.5rem;
+        }
+
+        .row {
+            display: flex;
+            flex-direction: row;
+            height: 200px;
+            width: 700px;
+            overflow: auto;
+            padding: 0 0.5rem 0 1rem;
+            gap: 0.5rem;
+        }
+
+        .grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
     `
 })
 class WrapperComponent {
     readonly batch = input(1, { transform: batchAttribute });
-    readonly items = input.required<unknown[]>();
+    readonly container = input<Element>();
+    readonly emit = input(false);
     readonly offset = input(0, { transform: offsetAttribute });
+    readonly overflow = input(false, { transform: booleanAttribute });
+    readonly root = input<HTMLElement>();
+    readonly rootMargin = input<string>();
     readonly threshold = input<number | number[]>();
+    readonly virtualize = input(false, { transform: booleanAttribute });
 
-    component = viewChild.required(NgxScrollerComponent);
-    elementRef = viewChild.required<NgxScrollerComponent, ElementRef<HTMLElement>>(NgxScrollerComponent, { read: ElementRef });
+    readonly component = viewChild.required(NgxScrollerComponent);
+    readonly elementRef = viewChild.required<NgxScrollerComponent, ElementRef<HTMLElement>>(NgxScrollerComponent, { read: ElementRef });
+
+    readonly loading = signal(false);
+    readonly items = signal(new Array(100).fill(0).map((_, index) => index));
+
+    onFirst(): void {
+        this.loading.set(true);
+        setTimeout(() => {
+            const first = this.items().at(0)! - 1;
+            this.items.update((items) => new Array(100).fill(0).map((_, index) => first - index).reverse().concat(items));
+            this.loading.set(false);
+        }, 1000);
+    }
+
+    onLast(): void {
+        this.loading.set(true);
+        setTimeout(() => {
+            const last = this.items().at(-1)! + 1;
+            this.items.update((items) => items.concat(new Array(100).fill(0).map((_, index) => last + index)));
+            this.loading.set(false);
+        }, 1000);
+    }
 }
 
 describe('NgxScrollerComponent', () => {
@@ -40,5 +138,32 @@ describe('NgxScrollerComponent', () => {
 
     it('should create the component', () => {
         expect(component).toBeTruthy();
+    });
+
+    it('should initialize with 2 child elements', () => {
+        fixture.detectChanges();
+        // @ts-ignore
+        expect(component.element.children.length).toBe(2);
+    });
+
+    it('should constrain the batch input', () => {
+        fixture.componentRef.setInput('batch', -10);
+        fixture.detectChanges();
+        expect(component.batch()).toBe(1);
+        fixture.componentRef.setInput('batch', 0);
+        fixture.detectChanges();
+        expect(component.batch()).toBe(1);
+        fixture.componentRef.setInput('batch', 10);
+        fixture.detectChanges();
+        expect(component.batch()).toBe(10);
+    });
+
+    it('should constrain the offset input', () => {
+        fixture.componentRef.setInput('offset', -10);
+        fixture.detectChanges();
+        expect(component.offset()).toBe(0);
+        fixture.componentRef.setInput('offset', 10);
+        fixture.detectChanges();
+        expect(component.offset()).toBe(10);
     });
 });
