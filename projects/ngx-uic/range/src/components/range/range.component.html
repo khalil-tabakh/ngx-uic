@@ -4,7 +4,13 @@
     @if (marks()) {
         @let marks = (max() - min()) / step() + 1;
         @for (mark of [].constructor(marks); track $index) {
-            <div class="mark" #markRef></div>
+            @let value = $index * step();
+            <div
+                class="mark"
+                [class.mark--lower]="value < lowest() || (value < highest() && type() === 'simple')"
+                [class.mark--upper]="value > highest()"
+            >
+            </div>
         }
     }
     <div class="thumb" [style.--high]="high()" #thumbRef></div>

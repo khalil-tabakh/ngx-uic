@@ -69,5 +69,13 @@ $high: calc(var(--high, 0) * 1%);
         width: calc(var(--track-height) * 0.25);
         border-radius: 50%;
         background: var(--mark-color);
+
+        &--lower {
+            background: var(--mark-color-lower, var(--mark-color));
+        }
+
+        &--upper {
+            background: var(--mark-color-upper, var(--mark-color));
+        }
     }
 }
