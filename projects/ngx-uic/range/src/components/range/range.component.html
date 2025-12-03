@@ -1,6 +1,8 @@
 <div class="track" [style.--low]="low()" [style.--high]="high()" #trackRef></div>
 <div class="slider" #sliderRef>
-    <div class="thumb" [style.--low]="low()" #thumbRef></div>
+    <label class="thumb" [style.--low]="low()" #thumbRef>
+        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
+    </label>
     @if (marks()) {
         @let marks = (max() - min()) / step() + 1;
         @for (mark of [].constructor(marks); track $index) {
@@ -13,5 +15,7 @@
             </div>
         }
     }
-    <div class="thumb" [style.--high]="high()" #thumbRef></div>
+    <label class="thumb" [style.--high]="high()" #thumbRef>
+        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
+    </label>
 </div>
