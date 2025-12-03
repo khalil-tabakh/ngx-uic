@@ -1,6 +1,6 @@
 // Angular
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
 // Lib
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -10,6 +10,7 @@ import { RangeType } from '../../models/range-type.model';
     imports: [CommonModule],
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
+    host: { '(pointerdown)': 'onSliding($event)' },
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
@@ -69,8 +70,7 @@ export class NgxRangeComponent {
         this.input.emit(rounded);
     }
 
-    @HostListener('pointerdown', ['$event'])
-    private onSliding(event: PointerEvent): void {
+    protected onSliding(event: PointerEvent): void {
         const track = this.trackRef().nativeElement;
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
