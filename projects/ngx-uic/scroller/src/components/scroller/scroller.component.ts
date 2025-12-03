@@ -18,7 +18,7 @@ export class NgxScrollerComponent<Item = unknown> {
     readonly items = input.required<Item[]>();
     readonly offset = input(0, { transform: offsetAttribute });
     readonly overflow = input(false, { transform: booleanAttribute });
-    readonly root = input(this.element);
+    readonly root = input<HTMLElement>(this.element);
     readonly rootMargin = input<string>();
     readonly threshold = input<number | number[]>();
     readonly virtualize = input(false, { transform: booleanAttribute });
@@ -81,18 +81,6 @@ export class NgxScrollerComponent<Item = unknown> {
                 // Update content
                 const oldStart = this.start();
                 const template = this.style.gridAutoFlow.includes('row') ? this.style.gridTemplateColumns : this.style.gridTemplateRows;
-                if (this.lastIndex() >= this.lastOffset()) {
-                    const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(-1, 0);
-                    const batch = reobserved ? count : this.batch() * count;
-                    const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
-                    const lastBatch = Math.min(batch, this.items().length - this.end());
-                    if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
-                    else {
-                        const emittable = this.autoEmit ? this.canEmit : this.emit();
-                        if (emittable) this.canEmit = Boolean(this.last.emit());
-                    }
-                    if (this.virtualize()) this.start.update((start) => start + firstBatch);
-                }
                 if (this.firstIndex() <= this.firstOffset()) {
                     const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(1, 0);
                     const batch = reobserved ? count : this.batch() * count;
@@ -104,6 +92,18 @@ export class NgxScrollerComponent<Item = unknown> {
                         if (emittable) this.canEmit = Boolean(this.first.emit());
                     }
                     if (this.virtualize()) this.end.update((end) => end - lastBatch);
+                }
+                if (this.lastIndex() >= this.lastOffset()) {
+                    const count = this.style.display.includes('grid') ? template.split(' ').length : this.getItemsCount(-1, 0);
+                    const batch = reobserved ? count : this.batch() * count;
+                    const firstBatch = Math.max(0, this.firstIndex() - this.firstOffset() - 1);
+                    const lastBatch = Math.min(batch, this.items().length - this.end());
+                    if (this.end() < this.items().length) this.end.update((end) => end + lastBatch);
+                    else {
+                        const emittable = this.autoEmit ? this.canEmit : this.emit();
+                        if (emittable) this.canEmit = Boolean(this.last.emit());
+                    }
+                    if (this.virtualize()) this.start.update((start) => start + firstBatch);
                 }
                 const newStart = this.start();
                 // Unshift content
