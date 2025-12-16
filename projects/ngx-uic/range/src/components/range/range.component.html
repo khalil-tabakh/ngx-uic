@@ -1,6 +1,6 @@
-<div class="track" [style.--low]="low()" [style.--high]="high()" #trackRef>
+<div class="track" [style.--low]="low()" [style.--high]="high()">
     <div class="progress"></div>
-    <div class="slider" #sliderRef>
+    <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
         <label class="thumb" #thumbRef>
             <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
         </label>

@@ -10,7 +10,7 @@ import { RangeType } from '../../models/range-type.model';
     imports: [CommonModule],
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onSliding($event)' },
+    host: { '(pointerdown)': 'onClick($event)' },
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
@@ -28,9 +28,8 @@ export class NgxRangeComponent {
     readonly change = output<RangeChange>();
     readonly input = output<number>();
 
-    private readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
-    private readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
-    private readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
+    private sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
+    private thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
 
     protected lowest = linkedSignal({
         source: () => ({ min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
@@ -70,8 +69,13 @@ export class NgxRangeComponent {
         this.input.emit(rounded);
     }
 
+    protected onClick(event: PointerEvent): void {
+        const slider = this.sliderRef().nativeElement;
+        slider.dispatchEvent(new PointerEvent('pointerdown', event));
+    }
+
     protected onSliding(event: PointerEvent): void {
-        const track = this.trackRef().nativeElement;
+        event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
@@ -79,7 +83,7 @@ export class NgxRangeComponent {
         let thumb = thumbDistance(thumbs[0]) < thumbDistance(thumbs[1]) ? thumbs[0] : thumbs[1];
         if (event.target === thumbs[0]) thumb = thumbs[0];
         if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
-        if (event.target === slider || event.target === track) this.setValue(event.offsetX, thumb);
+        if (event.target === slider) this.setValue(event.offsetX, thumb);
 
         slider.setPointerCapture(event.pointerId);
         this.renderer.setStyle(slider, 'cursor', 'grabbing');
