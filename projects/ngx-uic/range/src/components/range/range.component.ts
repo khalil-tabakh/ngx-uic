@@ -14,6 +14,7 @@ import { RangeType } from '../../models/range-type.model';
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
+    private elementRef = inject(ElementRef);
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
@@ -76,6 +77,7 @@ export class NgxRangeComponent {
 
     protected onSliding(event: PointerEvent): void {
         event.stopPropagation();
+        const range = this.elementRef.nativeElement;
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
@@ -86,7 +88,7 @@ export class NgxRangeComponent {
         if (event.target === slider) this.setValue(event.offsetX, thumb);
 
         slider.setPointerCapture(event.pointerId);
-        this.renderer.setStyle(slider, 'cursor', 'grabbing');
+        this.renderer.setStyle(range, 'cursor', 'grabbing');
         this.renderer.setStyle(thumb, 'cursor', 'grabbing');
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
@@ -94,7 +96,7 @@ export class NgxRangeComponent {
             this.setValue(event.offsetX, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
-            this.renderer.setStyle(slider, 'cursor', 'pointer');
+            this.renderer.setStyle(range, 'cursor', 'pointer');
             this.renderer.setStyle(thumb, 'cursor', 'grab');
             onPointerMove();
             onPointerUp();
