@@ -1,6 +1,6 @@
 {
     "name": "ngx-uic",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "author": "Khalil Tabakh",
     "license": "MIT",
     "description": "A collection of reusable Angular components designed to simplify the development of user interfaces.",
@@ -12,7 +12,7 @@
     "bugs": {
         "url": "https://github.com/khalil-tabakh/ngx-uic/issues"
     },
-    "keywords": ["angular", "components", "ui"],
+    "keywords": ["angular", "components", "ui", "range", "scroller"],
     "peerDependencies": {
         "@angular/common": "^20.0.6",
         "@angular/core": "^20.0.6"
