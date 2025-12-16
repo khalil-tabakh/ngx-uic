@@ -1,21 +1,23 @@
-<div class="track" [style.--low]="low()" [style.--high]="high()" #trackRef></div>
-<div class="slider" #sliderRef>
-    <label class="thumb" [style.--low]="low()" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
-    </label>
-    @if (marks()) {
-        @let marks = (max() - min()) / step() + 1;
-        @for (mark of [].constructor(marks); track $index) {
-            @let value = $index * step();
-            <div
-                class="mark"
-                [class.mark--lower]="value < lowest() || (value < highest() && type() === 'simple')"
-                [class.mark--upper]="value > highest()"
-            >
-            </div>
+<div class="track" [style.--low]="low()" [style.--high]="high()" #trackRef>
+    <div class="progress"></div>
+    <div class="slider" #sliderRef>
+        <label class="thumb" #thumbRef>
+            <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
+        </label>
+        @if (marks()) {
+            @let marks = (max() - min()) / step() + 1;
+            @for (mark of [].constructor(marks); track $index) {
+                @let value = $index * step();
+                <div
+                    class="mark"
+                    [class.mark--lower]="value < lowest() || (value < highest() && type() === 'simple')"
+                    [class.mark--upper]="value > highest()"
+                >
+                </div>
+            }
         }
-    }
-    <label class="thumb" [style.--high]="high()" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
-    </label>
+        <label class="thumb" #thumbRef>
+            <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
+        </label>
+    </div>
 </div>
