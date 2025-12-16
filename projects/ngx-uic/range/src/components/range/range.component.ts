@@ -92,7 +92,7 @@ export class NgxRangeComponent {
         this.renderer.setStyle(thumb, 'cursor', 'grabbing');
         const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
-            if (event.offsetX > thumbs[1].offsetLeft) thumb = thumbs[1];
+            if (event.offsetX > thumbs[1].offsetLeft || this.type() === 'simple') thumb = thumbs[1];
             this.setValue(event.offsetX, thumb);
         });
         const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
