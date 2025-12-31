@@ -19,28 +19,36 @@ export class NgxSegmentDirective {
         const trackWidth = this.element.parentElement!.clientWidth - (trackPaddingLeft + trackPaddingRight);
         const segmentLeft = this.element.offsetLeft - trackPaddingLeft;
         const segmentWidth = this.element.clientWidth;
+        const min = this.bounds()[0];
         const max = this.bounds()[3];
-        const start = max * segmentLeft / trackWidth;
-        const end = max * (segmentLeft + segmentWidth) / trackWidth;
+        const length = max - min;
+        const start = length * segmentLeft / trackWidth + min;
+        const end = length * (segmentLeft + segmentWidth) / trackWidth + min;
         return { start, end };
     });
 
     private low = computed(() => {
         const length = this.segment().end - this.segment().start;
         const lowest = this.bounds()[1];
-        return lowest < this.segment().start ? 0 : lowest < this.segment().end ? (lowest - this.segment().start) / length * 100 : 100;
+        if (lowest < this.segment().start) return 0;
+        if (lowest > this.segment().end) return 100;
+        return (lowest - this.segment().start) / length * 100;
     });
     private high = computed(() => {
         const length = this.segment().end - this.segment().start;
         const highest = this.bounds()[2];
-        return highest < this.segment().start ? 0 : highest < this.segment().end ? (highest - this.segment().start) / length * 100 : 100;
+        if (highest < this.segment().start) return 0;
+        if (highest > this.segment().end) return 100;
+        return (highest - this.segment().start) / length * 100;
     });
-
     private width = computed(() => {
+        const min = this.bounds()[0];
+        const max = this.bounds()[3];
+        const length = max - min;
         const index = this.splits().indexOf(this.split());
-        const previous = !this.splits().length || index === 0 ? 0 : index === -1 ? this.splits().at(-1)! : this.splits().at(index - 1)!;
-        const length = this.split() - previous;
-        return length / this.bounds()[3] * 100;
+        const previous = !this.splits().length || index === 0 ? min : index === -1 ? this.splits().at(-1)! : this.splits().at(index - 1)!;
+        const size = this.split() - previous;
+        return size / length * 100;
     });
 
     private low$ = afterRenderEffect({

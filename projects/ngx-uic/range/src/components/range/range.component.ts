@@ -36,7 +36,7 @@ export class NgxRangeComponent {
     protected lowest = linkedSignal({
         source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
         computation: ({ type, min, step, max, lower }) => {
-            if (type === 'simple') return 0;
+            if (type === 'simple') return min;
             const mapped = lower < min || lower > max ? min : lower;
             const rounded = step ? Math.round(mapped / step) * step : mapped;
             return rounded;
