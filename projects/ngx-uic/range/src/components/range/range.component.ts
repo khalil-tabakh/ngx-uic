@@ -1,13 +1,11 @@
-// Angular
-import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
-// Lib
+import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 
 @Component({
     selector: 'ngx-range',
-    imports: [CommonModule],
+    imports: [NgxSegmentDirective],
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
     host: { '(pointerdown)': 'onClick($event)' },
@@ -25,6 +23,10 @@ export class NgxRangeComponent {
     readonly max = input(100, { transform: (value: number | string) => isNaN(Number(value)) ? 100 : Number(value) });
     readonly step = input(1, { transform: (value: number | string) => isNaN(Number(value)) ? 1 : Number(value) });
     readonly marks = input(false, { transform: booleanAttribute });
+    readonly splits = input([], { transform: (values: number[]) => {
+        const unique = Array.from(new Set(values));
+        return unique.sort((a, b) => a - b).filter((value) => value > this.min() && value < this.max());
+    } });
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
@@ -33,8 +35,9 @@ export class NgxRangeComponent {
     private thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
 
     protected lowest = linkedSignal({
-        source: () => ({ min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
-        computation: ({ min, step, max, lower }) => {
+        source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
+        computation: ({ type, min, step, max, lower }) => {
+            if (type === 'simple') return 0;
             const mapped = lower < min || lower > max ? min : lower;
             const rounded = step ? Math.round(mapped / this.step()) * this.step() : mapped;
             return rounded;
