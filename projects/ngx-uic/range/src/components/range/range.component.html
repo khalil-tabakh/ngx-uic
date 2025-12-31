@@ -9,13 +9,13 @@
         <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
     </label>
     @if (marks()) {
-        @let marks = step() ? (max() - min()) / step() + 1 : 0;
-        @for (mark of [].constructor(marks); track $index) {
-            @let value = $index * step();
+        @for (mark of marks(); track $index) {
+            @let left = (mark - min()) / (max() - min()) * 100;
             <div
                 class="mark"
-                [class.mark--lower]="value < lowest() || (value < highest() && type() === 'simple')"
-                [class.mark--upper]="value > highest()"
+                [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'simple')"
+                [class.mark--upper]="mark > highest()"
+                [style.--left]="left"
             >
             </div>
         }

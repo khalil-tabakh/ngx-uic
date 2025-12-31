@@ -3,6 +3,7 @@ import { NgxSegmentDirective } from '../../directives/segment/segment.directive'
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 import { between } from '../../utils/functions.util';
+import { marksAttribute, splitsAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-range',
@@ -23,11 +24,8 @@ export class NgxRangeComponent {
     readonly value = input(50, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 50 });
     readonly upper = input(75, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 75 });
     readonly step = input(1, { transform: (value: number | string) => between(value, -1, this.max()) ? Number(value) : 1 });
-    readonly marks = input(false, { transform: booleanAttribute });
-    readonly splits = input([], { transform: (values: number[]) => {
-        const unique = Array.from(new Set(values));
-        return unique.sort((a, b) => a - b).filter((value) => between(value, this.min(), this.max()));
-    } });
+    readonly marks = input(null, { transform: (values: number[]) => marksAttribute(values, this.min(), this.max(), this.step()) });
+    readonly splits = input([], { transform: (values: number[]) => splitsAttribute(values, this.min(), this.max()) });
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
@@ -40,7 +38,7 @@ export class NgxRangeComponent {
         computation: ({ type, min, step, max, lower }) => {
             if (type === 'simple') return 0;
             const mapped = lower < min || lower > max ? min : lower;
-            const rounded = step ? Math.round(mapped / this.step()) * this.step() : mapped;
+            const rounded = step ? Math.round(mapped / step) * step : mapped;
             return rounded;
         }
     });
@@ -50,7 +48,7 @@ export class NgxRangeComponent {
             let mapped = type === 'simple' ? value : upper;
             if (mapped < min) mapped = min;
             if (mapped > max) mapped = max;
-            const rounded = step ? Math.round(mapped / this.step()) * this.step() : mapped;
+            const rounded = step ? Math.round(mapped / step) * step : mapped;
             return rounded;
         }
     });
