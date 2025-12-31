@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, booleanAttri
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
+import { between } from '../../utils/functions.util';
 
 @Component({
     selector: 'ngx-range',
@@ -16,16 +17,16 @@ export class NgxRangeComponent {
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
-    readonly min = input(0, { transform: (value: number | string) => isNaN(Number(value)) ? 0 : Number(value) });
-    readonly lower = input(25, { transform: (value: number | string) => isNaN(Number(value)) ? 25 : Number(value) });
-    readonly value = input(50, { transform: (value: number | string) => isNaN(Number(value)) ? 50 : Number(value) });
-    readonly upper = input(75, { transform: (value: number | string) => isNaN(Number(value)) ? 75 : Number(value) });
-    readonly max = input(100, { transform: (value: number | string) => isNaN(Number(value)) ? 100 : Number(value) });
-    readonly step = input(1, { transform: (value: number | string) => isNaN(Number(value)) ? 1 : Number(value) });
+    readonly min = input(0, { transform: (value: number | string) => !isNaN(Number(value)) ? Number(value) : 0 });
+    readonly max = input(100, { transform: (value: number | string) => Number(value) > this.min() ? Number(value) : this.min() + 100 });
+    readonly lower = input(25, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 25 });
+    readonly value = input(50, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 50 });
+    readonly upper = input(75, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 75 });
+    readonly step = input(1, { transform: (value: number | string) => between(value, -1, this.max()) ? Number(value) : 1 });
     readonly marks = input(false, { transform: booleanAttribute });
     readonly splits = input([], { transform: (values: number[]) => {
         const unique = Array.from(new Set(values));
-        return unique.sort((a, b) => a - b).filter((value) => value > this.min() && value < this.max());
+        return unique.sort((a, b) => a - b).filter((value) => between(value, this.min(), this.max()));
     } });
 
     readonly change = output<RangeChange>();
