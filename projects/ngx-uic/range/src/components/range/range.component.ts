@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, booleanAttribute, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
-import { between } from '../../utils/functions.util';
-import { marksAttribute, splitsAttribute } from '../../utils/transforms.util';
+import { between, closest } from '../../utils/functions.util';
+import { marksAttribute, splitsAttribute, stepAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-range',
@@ -23,7 +23,7 @@ export class NgxRangeComponent {
     readonly lower = input(25, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 25 });
     readonly value = input(50, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 50 });
     readonly upper = input(75, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 75 });
-    readonly step = input(1, { transform: (value: number | string) => between(value, -1, this.max()) ? Number(value) : 1 });
+    readonly step = input([], { transform: (value: number | number[] | string) => stepAttribute(value, this.min(), this.max()) });
     readonly marks = input(null, { transform: (values: number[]) => marksAttribute(values, this.min(), this.max(), this.step()) });
     readonly splits = input([], { transform: (values: number[]) => splitsAttribute(values, this.min(), this.max()) });
 
@@ -38,7 +38,7 @@ export class NgxRangeComponent {
         computation: ({ type, min, step, max, lower }) => {
             if (type === 'simple') return min;
             const mapped = lower < min || lower > max ? min : lower;
-            const rounded = step ? Math.round(mapped / step) * step : mapped;
+            const rounded = closest(mapped, step);
             return rounded;
         }
     });
@@ -48,7 +48,7 @@ export class NgxRangeComponent {
             let mapped = type === 'simple' ? value : upper;
             if (mapped < min) mapped = min;
             if (mapped > max) mapped = max;
-            const rounded = step ? Math.round(mapped / step) * step : mapped;
+            const rounded = closest(mapped, step);
             return rounded;
         }
     });
@@ -61,7 +61,7 @@ export class NgxRangeComponent {
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
-        const rounded = this.step() ? Math.round(mapped / this.step()) * this.step() : mapped;
+        const rounded = closest(mapped, this.step());
         if (thumb === this.thumbRefs()[0].nativeElement) this.lowest.set(rounded);
         if (thumb === this.thumbRefs()[1].nativeElement) this.highest.set(rounded);
 
