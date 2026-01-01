@@ -7,6 +7,11 @@ export const marksAttribute = (values: number[], min: number, max: number, steps
     return marks.length ? marks : steps;
 };
 
+export const offsetAttribute = (value: number | string, min: number, max: number) => {
+    const offset = Number(value);
+    return offset > 0 && offset <= max - min ? offset : (max - min) / 100;
+}
+
 export const splitsAttribute = (values: number[], min: number, max: number) => {
     const unique = Array.from(new Set(values));
     const sorted = unique.toSorted((a, b) => a - b);

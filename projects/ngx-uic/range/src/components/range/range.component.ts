@@ -3,7 +3,7 @@ import { NgxSegmentDirective } from '../../directives/segment/segment.directive'
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 import { between, closest } from '../../utils/functions.util';
-import { marksAttribute, splitsAttribute, stepAttribute } from '../../utils/transforms.util';
+import { marksAttribute, offsetAttribute, splitsAttribute, stepAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-range',
@@ -20,6 +20,7 @@ export class NgxRangeComponent {
     readonly type = input<RangeType>('simple');
     readonly min = input(0, { transform: (value: number | string) => !isNaN(Number(value)) ? Number(value) : 0 });
     readonly max = input(100, { transform: (value: number | string) => Number(value) > this.min() ? Number(value) : this.min() + 100 });
+    readonly offset = input(1, { transform: (value: number | string) => offsetAttribute(value, this.min(), this.max()) });
     readonly pivot = input(null, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : this.min() });
     readonly lower = input(25, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 25 });
     readonly value = input(50, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 50 });
@@ -86,13 +87,12 @@ export class NgxRangeComponent {
         event.preventDefault();
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
         const value = event.target === thumbs[0] ? this.lowest : this.highest;
-        const offset = (this.max() - this.min()) / 100;
         const index = this.step().indexOf(value());
         switch (event.key) {
             case 'ArrowDown':
             case 'ArrowLeft': {
                 const step = index > 0 ? this.step().at(index - 1) : undefined;
-                const newValue = Math.max(step ?? (value() - offset), this.min());
+                const newValue = Math.max(step ?? (value() - this.offset()), this.min());
                 const signal = newValue < this.lowest() ? this.lowest : value;
                 const oldValue = signal();
                 signal.set(newValue);
@@ -103,7 +103,7 @@ export class NgxRangeComponent {
             case 'ArrowRight':
             case 'ArrowUp': {
                 const step = index > -1 ? this.step().at(index + 1) : undefined;
-                const newValue = Math.min(step ?? (value() + offset), this.max());
+                const newValue = Math.min(step ?? (value() + this.offset()), this.max());
                 const signal = newValue > this.highest() ? this.highest : value;
                 const oldValue = signal();
                 signal.set(newValue);
