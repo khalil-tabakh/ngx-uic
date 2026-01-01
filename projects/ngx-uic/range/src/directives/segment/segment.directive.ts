@@ -1,4 +1,4 @@
-import { Directive, ElementRef, Renderer2, RendererStyleFlags2, afterRenderEffect, computed, inject, input } from '@angular/core';
+import { Directive, ElementRef, Renderer2, RendererStyleFlags2, afterRenderEffect, computed, effect, inject, input } from '@angular/core';
 
 @Directive({
     selector: '[ngxSegment]',
@@ -26,21 +26,6 @@ export class NgxSegmentDirective {
         const end = length * (segmentLeft + segmentWidth) / trackWidth + min;
         return { start, end };
     });
-
-    private low = computed(() => {
-        const length = this.segment().end - this.segment().start;
-        const lowest = this.bounds()[1];
-        if (lowest < this.segment().start) return 0;
-        if (lowest > this.segment().end) return 100;
-        return (lowest - this.segment().start) / length * 100;
-    });
-    private high = computed(() => {
-        const length = this.segment().end - this.segment().start;
-        const highest = this.bounds()[2];
-        if (highest < this.segment().start) return 0;
-        if (highest > this.segment().end) return 100;
-        return (highest - this.segment().start) / length * 100;
-    });
     private width = computed(() => {
         const min = this.bounds()[0];
         const max = this.bounds()[3];
@@ -51,13 +36,28 @@ export class NgxSegmentDirective {
         return size / length * 100;
     });
 
+    private width$ = effect(() => this.renderer.setStyle(this.element, '--width', this.width(), RendererStyleFlags2.DashCase));
+
     private low$ = afterRenderEffect({
-        write: () => this.renderer.setStyle(this.element, '--low', this.low(), RendererStyleFlags2.DashCase)
+        earlyRead: () => this.segment(),
+        write: (segment) => {
+            const lowest = this.bounds()[1];
+            const low = this.toPercentage(lowest, segment().start, segment().end);
+            this.renderer.setStyle(this.element, '--low', low, RendererStyleFlags2.DashCase);
+        }
     });
     private high$ = afterRenderEffect({
-        write: () => this.renderer.setStyle(this.element, '--high', this.high(), RendererStyleFlags2.DashCase)
+        earlyRead: () => this.segment(),
+        write: (segment) => {
+            const highest = this.bounds()[2];
+            const high = this.toPercentage(highest, segment().start, segment().end);
+            this.renderer.setStyle(this.element, '--high', high, RendererStyleFlags2.DashCase);
+        }
     });
-    private width$ = afterRenderEffect({
-        write: () => this.renderer.setStyle(this.element, '--width', this.width(), RendererStyleFlags2.DashCase)
-    });
+
+    private toPercentage(value: number, min: number, max: number): number {
+        if (value < min) return 0;
+        if (value > max) return 100;
+        return (value - min) / (max - min) * 100;
+    }
 }
