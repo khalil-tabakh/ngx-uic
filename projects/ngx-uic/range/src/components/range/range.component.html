@@ -24,8 +24,8 @@
         [splits]="splits()"
     ></div>
 </div>
-<div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
-    <label class="thumb" [style.--low]="low()" #thumbRef>
+<div class="slider" (keydown)="onPressing($event)" (pointerdown)="onSliding($event)" #sliderRef>
+    <label tabindex="0" class="thumb" [style.--low]="low()" #thumbRef>
         <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
     </label>
     @if (marks()) {
@@ -40,7 +40,7 @@
             </div>
         }
     }
-    <label class="thumb" [style.--high]="high()" #thumbRef>
+    <label tabindex="0" class="thumb" [style.--high]="high()" #thumbRef>
         <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
     </label>
 </div>

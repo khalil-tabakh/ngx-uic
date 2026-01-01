@@ -57,6 +57,14 @@ export class NgxRangeComponent {
     protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
     protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
 
+    private emitValue(value: number): void {
+        const event: RangeChange = this.type() === 'simple'
+            ? { value: this.highest() }
+            : { lower: this.lowest(), upper: this.highest() };
+        this.change.emit(event);
+        this.input.emit(value);
+    }
+
     private setValue(offsetX: number, thumb: HTMLElement): void {
         let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;
         if (percentage < 0) percentage = 0;
@@ -65,17 +73,45 @@ export class NgxRangeComponent {
         const rounded = closest(mapped, this.step());
         if (thumb === this.thumbRefs()[0].nativeElement) this.lowest.set(rounded);
         if (thumb === this.thumbRefs()[1].nativeElement) this.highest.set(rounded);
-
-        const event: RangeChange = this.type() === 'simple'
-            ? { value: this.highest() }
-            : { lower: this.lowest(), upper: this.highest() };
-        this.change.emit(event);
-        this.input.emit(rounded);
+        this.emitValue(rounded);
     }
 
     protected onClick(event: PointerEvent): void {
         const slider = this.sliderRef().nativeElement;
         slider.dispatchEvent(new PointerEvent('pointerdown', event));
+    }
+
+    protected onPressing(event: KeyboardEvent): void {
+        if (event.key === 'Tab') return;
+        event.preventDefault();
+        const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
+        const value = event.target === thumbs[0] ? this.lowest : this.highest;
+        const offset = (this.max() - this.min()) / 100;
+        const index = this.step().indexOf(value());
+        switch (event.key) {
+            case 'ArrowDown':
+            case 'ArrowLeft': {
+                const step = index > 0 ? this.step().at(index - 1) : undefined;
+                const newValue = Math.max(step ?? (value() - offset), this.min());
+                const signal = newValue < this.lowest() ? this.lowest : value;
+                const oldValue = signal();
+                signal.set(newValue);
+                if (newValue !== oldValue) this.emitValue(signal());
+                if (signal !== value) thumbs.find((thumb) => thumb !== event.target)?.focus();
+                break;
+            }
+            case 'ArrowRight':
+            case 'ArrowUp': {
+                const step = index > -1 ? this.step().at(index + 1) : undefined;
+                const newValue = Math.min(step ?? (value() + offset), this.max());
+                const signal = newValue > this.highest() ? this.highest : value;
+                const oldValue = signal();
+                signal.set(newValue);
+                if (newValue !== oldValue) this.emitValue(signal());
+                if (signal !== value) thumbs.find((thumb) => thumb !== event.target)?.focus();
+                break;
+            }
+        }
     }
 
     protected onSliding(event: PointerEvent): void {
