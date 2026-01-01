@@ -20,12 +20,13 @@ export class NgxRangeComponent {
     readonly type = input<RangeType>('simple');
     readonly min = input(0, { transform: (value: number | string) => !isNaN(Number(value)) ? Number(value) : 0 });
     readonly max = input(100, { transform: (value: number | string) => Number(value) > this.min() ? Number(value) : this.min() + 100 });
+    readonly pivot = input(null, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : this.min() });
     readonly lower = input(25, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 25 });
     readonly value = input(50, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 50 });
     readonly upper = input(75, { transform: (value: number | string) => between(value, this.min(), this.max()) ? Number(value) : 75 });
     readonly step = input([], { transform: (value: number | number[] | string) => stepAttribute(value, this.min(), this.max()) });
-    readonly marks = input(null, { transform: (values: number[]) => marksAttribute(values, this.min(), this.max(), this.step()) });
     readonly splits = input([], { transform: (values: number[]) => splitsAttribute(values, this.min(), this.max()) });
+    readonly marks = input(null, { transform: (values: number[]) => marksAttribute(values, this.min(), this.max(), this.step()) });
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();

@@ -12,6 +12,7 @@ export class NgxSegmentDirective {
     readonly lowest = input.required<number>();
     readonly max = input.required<number>();
     readonly min = input.required<number>();
+    readonly pivot = input<number | null>();
     readonly split = input.required<number>();
     readonly splits = input.required<number[]>();
 
@@ -40,7 +41,8 @@ export class NgxSegmentDirective {
     private low$ = afterRenderEffect({
         earlyRead: () => this.segment(),
         write: (segment) => {
-            const low = this.toPercentage(this.lowest(), segment().start, segment().end);
+            const value = this.pivot() ?? this.lowest();
+            const low = this.toPercentage(value, segment().start, segment().end);
             this.renderer.setStyle(this.element, '--low', low, RendererStyleFlags2.DashCase);
         }
     });
