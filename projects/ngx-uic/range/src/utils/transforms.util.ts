@@ -10,7 +10,7 @@ export const marksAttribute = (values: number[], min: number, max: number, steps
 export const offsetAttribute = (value: number | string, min: number, max: number) => {
     const offset = Number(value);
     return offset > 0 && offset <= max - min ? offset : (max - min) / 100;
-}
+};
 
 export const splitsAttribute = (values: number[], min: number, max: number) => {
     const unique = Array.from(new Set(values));
@@ -28,4 +28,8 @@ export const stepAttribute = (value: number | number[] | string, min: number, ma
         const length = step ? Math.floor((max - min) / step) + 1 : 0;
         return Array(length).fill(0).map((_, index) => min + step * index);
     }
+};
+
+export const valueAttribute = (value: number | string, min: number, max: number, rate: number) => {
+    return between(value, min, max) ? Number(value) : (max - min) * rate / 100 + min;
 };
