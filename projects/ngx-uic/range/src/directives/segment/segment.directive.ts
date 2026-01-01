@@ -8,7 +8,10 @@ export class NgxSegmentDirective {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private renderer = inject(Renderer2);
 
-    readonly bounds = input.required<[number, number, number, number]>();
+    readonly highest = input.required<number>();
+    readonly lowest = input.required<number>();
+    readonly max = input.required<number>();
+    readonly min = input.required<number>();
     readonly split = input.required<number>();
     readonly splits = input.required<number[]>();
 
@@ -19,19 +22,15 @@ export class NgxSegmentDirective {
         const trackWidth = this.element.parentElement!.clientWidth - (trackPaddingLeft + trackPaddingRight);
         const segmentLeft = this.element.offsetLeft - trackPaddingLeft;
         const segmentWidth = this.element.clientWidth;
-        const min = this.bounds()[0];
-        const max = this.bounds()[3];
-        const length = max - min;
-        const start = length * segmentLeft / trackWidth + min;
-        const end = length * (segmentLeft + segmentWidth) / trackWidth + min;
+        const length = this.max() - this.min();
+        const start = length * segmentLeft / trackWidth + this.min();
+        const end = length * (segmentLeft + segmentWidth) / trackWidth + this.min();
         return { start, end };
     });
     private width = computed(() => {
-        const min = this.bounds()[0];
-        const max = this.bounds()[3];
-        const length = max - min;
         const index = this.splits().indexOf(this.split());
-        const previous = !this.splits().length || index === 0 ? min : index === -1 ? this.splits().at(-1)! : this.splits().at(index - 1)!;
+        const previous = index === 0 ? this.min() : index === -1 ? (this.splits().at(-1) ?? this.min()) : this.splits().at(index - 1)!;
+        const length = this.max() - this.min();
         const size = this.split() - previous;
         return size / length * 100;
     });
@@ -41,16 +40,14 @@ export class NgxSegmentDirective {
     private low$ = afterRenderEffect({
         earlyRead: () => this.segment(),
         write: (segment) => {
-            const lowest = this.bounds()[1];
-            const low = this.toPercentage(lowest, segment().start, segment().end);
+            const low = this.toPercentage(this.lowest(), segment().start, segment().end);
             this.renderer.setStyle(this.element, '--low', low, RendererStyleFlags2.DashCase);
         }
     });
     private high$ = afterRenderEffect({
         earlyRead: () => this.segment(),
         write: (segment) => {
-            const highest = this.bounds()[2];
-            const high = this.toPercentage(highest, segment().start, segment().end);
+            const high = this.toPercentage(this.highest(), segment().start, segment().end);
             this.renderer.setStyle(this.element, '--high', high, RendererStyleFlags2.DashCase);
         }
     });

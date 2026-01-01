@@ -1,8 +1,26 @@
 <div class="track">
     @for (split of splits(); track $index) {
-        <div class="segment" ngxSegment [split]="split" [bounds]="[min(), lowest(), highest(), max()]" [splits]="splits()"></div>
+        <div
+            class="segment"
+            ngxSegment
+            [highest]="highest()"
+            [lowest]="lowest()"
+            [max]="max()"
+            [min]="min()"
+            [split]="split"
+            [splits]="splits()"
+        ></div>
     }
-    <div class="segment" ngxSegment [split]="max()" [bounds]="[min(), lowest(), highest(), max()]" [splits]="splits()"></div>
+    <div
+        class="segment"
+        ngxSegment
+        [highest]="highest()"
+        [lowest]="lowest()"
+        [max]="max()"
+        [min]="min()"
+        [split]="max()"
+        [splits]="splits()"
+    ></div>
 </div>
 <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
     <label class="thumb" [style.--low]="low()" #thumbRef>
