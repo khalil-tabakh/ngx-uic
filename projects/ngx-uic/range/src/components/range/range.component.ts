@@ -21,7 +21,7 @@ export class NgxRangeComponent {
     readonly min = input(0, { transform: (value: number | string) => !isNaN(Number(value)) ? Number(value) : 0 });
     readonly max = input(100, { transform: (value: number | string) => Number(value) > this.min() ? Number(value) : this.min() + 100 });
     readonly offset = input(1, { transform: (value: number | string) => offsetAttribute(value, this.min(), this.max()) });
-    readonly pivot = input(null, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 0) });
+    readonly origin = input(null, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 0) });
     readonly lower = input(25, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 25) });
     readonly value = input(50, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 50) });
     readonly upper = input(75, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 75) });
