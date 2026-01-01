@@ -16,6 +16,7 @@ $high: calc(var(--high, 0) * 1%);
     width: 10rem;
     justify-content: center;
     align-items: center;
+    user-select: none;
     cursor: pointer;
 }
 
