@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, computed, inject, input, linkedSignal, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, computed, inject, input, linkedSignal, numberAttribute, output, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 import { closest } from '../../utils/functions.util';
-import { marksAttribute, offsetAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
+import { marksAttribute, maxAttribute, minAttribute, offsetAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-range',
@@ -18,16 +18,16 @@ export class NgxRangeComponent {
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
-    readonly min = input(0, { transform: (value: number | string) => !isNaN(Number(value)) ? Number(value) : 0 });
-    readonly max = input(100, { transform: (value: number | string) => Number(value) > this.min() ? Number(value) : this.min() + 100 });
-    readonly offset = input(1, { transform: (value: number | string) => offsetAttribute(value, this.min(), this.max()) });
-    readonly origin = input(0, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 0) });
-    readonly lower = input(25, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 25) });
-    readonly value = input(50, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 50) });
-    readonly upper = input(75, { transform: (value: number | string) => valueAttribute(value, this.min(), this.max(), 75) });
-    readonly step = input([], { transform: (value: number | number[] | string) => stepAttribute(value, this.min(), this.max()) });
-    readonly splits = input([], { transform: (values: number[]) => splitsAttribute(values, this.min(), this.max()) });
-    readonly marks = input(null, { transform: (values: number[]) => marksAttribute(values, this.min(), this.max(), this.step()) });
+    readonly min = input(0, { transform: numberAttribute });
+    readonly lower = input(25, { transform: numberAttribute });
+    readonly value = input(50, { transform: numberAttribute });
+    readonly upper = input(75, { transform: numberAttribute });
+    readonly max = input(100, { transform: numberAttribute });
+    readonly origin = input(0, { transform: numberAttribute });
+    readonly offset = input(1, { transform: numberAttribute });
+    readonly step = input<number | number[] | string>(1);
+    readonly splits = input<number[]>([]);
+    readonly marks = input<number | number[] | string>();
 
     readonly change = output<RangeChange>();
     readonly input = output<number>();
@@ -37,24 +37,25 @@ export class NgxRangeComponent {
     readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
 
+    protected _min = computed(() => minAttribute(this.min(), this.max()));
+    protected _max = computed(() => maxAttribute(this.max(), this.min()));
+    
+    private _lower = computed(() => valueAttribute(this.type() === 'simple' ? this.min() : this.lower(), this._min(), this._max(), 0));
+    private _upper = computed(() => valueAttribute(this.type() === 'simple' ? this.value() : this.upper(), this._min(), this._max(), 100));
+    protected _origin = computed(() => valueAttribute(this.origin(), this._min(), this._max(), 0));
+    private _offset = computed(() => offsetAttribute(this.offset(), this._min(), this._max()));
+    private _steps = computed(() => stepAttribute(this.step(), this._min(), this._max()));
+    protected _splits = computed(() => splitsAttribute(this.splits(), this._min(), this._max()));
+
+    protected _marks = computed(() => marksAttribute(this.marks(), this._min(), this._max(), this._steps()));
+
     protected lowest = linkedSignal({
-        source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
-        computation: ({ type, min, step, max, lower }) => {
-            if (type === 'simple') return min;
-            const mapped = lower < min || lower > max ? min : lower;
-            const rounded = closest(mapped, step);
-            return rounded;
-        }
+        source: () => ({ lower: this._lower(), steps: this._steps() }),
+        computation: ({ lower, steps }) => closest(lower, steps)
     });
     protected highest = linkedSignal({
-        source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), value: this.value(), upper: this.upper() }),
-        computation: ({ type, min, step, max, value, upper }) => {
-            let mapped = type === 'simple' ? value : upper;
-            if (mapped < min) mapped = min;
-            if (mapped > max) mapped = max;
-            const rounded = closest(mapped, step);
-            return rounded;
-        }
+        source: () => ({ upper: this._upper(), steps: this._steps() }),
+        computation: ({ upper, steps }) => closest(upper, steps)
     });
 
     private emitValue(value: number): void {
@@ -69,8 +70,8 @@ export class NgxRangeComponent {
         let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
-        const mapped = (this.max() - this.min()) * percentage / 100 + this.min();
-        const rounded = closest(mapped, this.step());
+        const mapped = (this._max() - this._min()) * percentage / 100 + this._min();
+        const rounded = closest(mapped, this._steps());
         if (thumb === this.thumbRefs()[0].nativeElement) this.lowest.set(rounded);
         if (thumb === this.thumbRefs()[1].nativeElement) this.highest.set(rounded);
         this.emitValue(rounded);
@@ -87,12 +88,12 @@ export class NgxRangeComponent {
         event.preventDefault();
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
         const value = event.target === thumbs[0] ? this.lowest : this.highest;
-        const index = this.step().indexOf(value());
+        const index = this._steps().indexOf(value());
         switch (event.key) {
             case 'ArrowDown':
             case 'ArrowLeft': {
-                const step = index > 0 ? this.step().at(index - 1) : undefined;
-                const newValue = Math.max(step ?? (value() - this.offset()), this.min());
+                const step = index > 0 ? this._steps().at(index - 1) : undefined;
+                const newValue = Math.max(step ?? (value() - this._offset()), this._min());
                 const signal = newValue < this.lowest() ? this.lowest : value;
                 const oldValue = signal();
                 signal.set(newValue);
@@ -102,8 +103,8 @@ export class NgxRangeComponent {
             }
             case 'ArrowRight':
             case 'ArrowUp': {
-                const step = index > -1 ? this.step().at(index + 1) : undefined;
-                const newValue = Math.min(step ?? (value() + this.offset()), this.max());
+                const step = index > -1 ? this._steps().at(index + 1) : undefined;
+                const newValue = Math.min(step ?? (value() + this._offset()), this._max());
                 const signal = newValue > this.highest() ? this.highest : value;
                 const oldValue = signal();
                 signal.set(newValue);

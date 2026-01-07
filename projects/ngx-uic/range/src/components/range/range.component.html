@@ -1,45 +1,43 @@
 <div class="track">
-    @for (split of splits(); track $index) {
+    @for (split of _splits(); track $index) {
         <div
             class="segment"
             ngxSegment
-            [min]="min()"
-            [lowest]="type() === 'simple' ? origin() : lowest()"
+            [min]="_min()"
+            [lowest]="type() === 'simple' ? _origin() : lowest()"
             [highest]="highest()"
-            [max]="max()"
+            [max]="_max()"
             [split]="split"
-            [splits]="splits()"
+            [splits]="_splits()"
         ></div>
     }
     <div
         class="segment"
         ngxSegment
-        [min]="min()"
-        [lowest]="type() === 'simple' ? origin() : lowest()"
+        [min]="_min()"
+        [lowest]="type() === 'simple' ? _origin() : lowest()"
         [highest]="highest()"
-        [max]="max()"
-        [split]="max()"
-        [splits]="splits()"
+        [max]="_max()"
+        [split]="_max()"
+        [splits]="_splits()"
     ></div>
 </div>
 <div class="slider" (keydown)="onPressing($event)" (pointerdown)="onSliding($event)" #sliderRef>
     @let low = type() === 'simple' ? null : (lowest() - _min()) / (_max() - _min()) * 100;
     <label tabindex="0" class="thumb" [style.--low]="low" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
+        <input type="range" [min]="_min()" [max]="_max()" [step]="step().toString()" [value]="lowest()" />
     </label>
-    @if (marks()) {
-        @for (mark of marks(); track $index) {
-            <div
-                class="mark"
-                [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'simple')"
-                [class.mark--upper]="mark > highest()"
-                [style.--left]="(mark - min()) / (max() - min()) * 100;"
-            >
-            </div>
-        }
+    @for (mark of _marks(); track $index) {
+        <div
+            class="mark"
+            [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'simple')"
+            [class.mark--upper]="mark > highest()"
+            [style.--left]="(mark - _min()) / (_max() - _min()) * 100"
+        >
+        </div>
     }
     @let high = (highest() - _min()) / (_max() - _min()) * 100;
     <label tabindex="0" class="thumb" [style.--high]="high" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
+        <input type="range" [min]="_min()" [max]="_max()" [step]="step().toString()" [value]="highest()" />
     </label>
 </div>
