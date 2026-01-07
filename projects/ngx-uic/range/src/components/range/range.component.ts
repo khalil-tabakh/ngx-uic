@@ -14,7 +14,7 @@ import { marksAttribute, offsetAttribute, splitsAttribute, stepAttribute, valueA
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
-    private elementRef = inject(ElementRef);
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private renderer = inject(Renderer2);
 
     readonly type = input<RangeType>('simple');
@@ -77,8 +77,9 @@ export class NgxRangeComponent {
     }
 
     protected onClick(event: PointerEvent): void {
+        event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
-        slider.dispatchEvent(new PointerEvent('pointerdown', event));
+        if (event.target !== slider) slider.dispatchEvent(new PointerEvent('pointerdown', event));
     }
 
     protected onPressing(event: KeyboardEvent): void {
@@ -114,8 +115,8 @@ export class NgxRangeComponent {
     }
 
     protected onSliding(event: PointerEvent): void {
-        event.stopPropagation();
-        const range = this.elementRef.nativeElement;
+        if (!event.isTrusted) event.stopPropagation();
+        const range = this.element;
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
