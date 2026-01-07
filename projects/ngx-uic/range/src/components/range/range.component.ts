@@ -32,8 +32,10 @@ export class NgxRangeComponent {
     readonly change = output<RangeChange>();
     readonly input = output<number>();
 
-    private sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
-    private thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
+    readonly segments = viewChildren(NgxSegmentDirective);
+    readonly segmentRefs = viewChildren<NgxSegmentDirective, ElementRef<HTMLElement>>(NgxSegmentDirective, { read: ElementRef });
+    readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
+    readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
 
     protected lowest = linkedSignal({
         source: () => ({ type: this.type(), min: this.min(), step: this.step(), max: this.max(), lower: this.lower() }),
