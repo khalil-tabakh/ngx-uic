@@ -8,11 +8,10 @@ export class NgxSegmentDirective {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private renderer = inject(Renderer2);
 
-    readonly highest = input.required<number>();
-    readonly lowest = input.required<number>();
-    readonly max = input.required<number>();
     readonly min = input.required<number>();
-    readonly origin = input<number | null>();
+    readonly lowest = input.required<number>();
+    readonly highest = input.required<number>();
+    readonly max = input.required<number>();
     readonly split = input.required<number>();
     readonly splits = input.required<number[]>();
 
@@ -41,8 +40,7 @@ export class NgxSegmentDirective {
     private low$ = afterRenderEffect({
         earlyRead: () => this.segment(),
         write: (segment) => {
-            const value = this.origin() ?? this.lowest();
-            const low = this.toPercentage(value, segment().start, segment().end);
+            const low = this.toPercentage(this.lowest(), segment().start, segment().end);
             this.renderer.setStyle(this.element, '--low', low, RendererStyleFlags2.DashCase);
         }
     });

@@ -3,11 +3,10 @@
         <div
             class="segment"
             ngxSegment
-            [highest]="highest()"
-            [lowest]="lowest()"
-            [max]="max()"
             [min]="min()"
-            [origin]="type() === 'simple' ? origin() : null"
+            [lowest]="type() === 'simple' ? origin() : lowest()"
+            [highest]="highest()"
+            [max]="max()"
             [split]="split"
             [splits]="splits()"
         ></div>
@@ -15,11 +14,10 @@
     <div
         class="segment"
         ngxSegment
-        [highest]="highest()"
-        [lowest]="lowest()"
-        [max]="max()"
         [min]="min()"
-        [origin]="type() === 'simple' ? origin() : null"
+        [lowest]="type() === 'simple' ? origin() : lowest()"
+        [highest]="highest()"
+        [max]="max()"
         [split]="max()"
         [splits]="splits()"
     ></div>
