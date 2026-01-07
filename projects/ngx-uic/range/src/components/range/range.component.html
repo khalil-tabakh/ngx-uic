@@ -23,22 +23,23 @@
     ></div>
 </div>
 <div class="slider" (keydown)="onPressing($event)" (pointerdown)="onSliding($event)" #sliderRef>
-    <label tabindex="0" class="thumb" [style.--low]="low()" #thumbRef>
+    @let low = type() === 'simple' ? null : (lowest() - _min()) / (_max() - _min()) * 100;
+    <label tabindex="0" class="thumb" [style.--low]="low" #thumbRef>
         <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="lowest()" />
     </label>
     @if (marks()) {
         @for (mark of marks(); track $index) {
-            @let left = (mark - min()) / (max() - min()) * 100;
             <div
                 class="mark"
                 [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'simple')"
                 [class.mark--upper]="mark > highest()"
-                [style.--left]="left"
+                [style.--left]="(mark - min()) / (max() - min()) * 100;"
             >
             </div>
         }
     }
-    <label tabindex="0" class="thumb" [style.--high]="high()" #thumbRef>
+    @let high = (highest() - _min()) / (_max() - _min()) * 100;
+    <label tabindex="0" class="thumb" [style.--high]="high" #thumbRef>
         <input type="range" [min]="min()" [max]="max()" [step]="step()" [value]="highest()" />
     </label>
 </div>

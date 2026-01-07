@@ -57,9 +57,6 @@ export class NgxRangeComponent {
         }
     });
 
-    protected low = computed(() => this.type() === 'simple' ? null : (this.lowest() - this.min()) / (this.max() - this.min()) * 100);
-    protected high = computed(() => (this.highest() - this.min()) / (this.max() - this.min()) * 100);
-
     private emitValue(value: number): void {
         const event: RangeChange = this.type() === 'simple'
             ? { value: this.highest() }
