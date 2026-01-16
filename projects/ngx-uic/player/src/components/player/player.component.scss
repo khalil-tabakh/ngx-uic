@@ -1,0 +1,13 @@
+:host {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+    user-select: none;
+    touch-action: none;
+}
+
+:host ::ng-deep video {
+    flex: 1;
+}

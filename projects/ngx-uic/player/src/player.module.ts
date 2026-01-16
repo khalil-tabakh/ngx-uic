@@ -1,7 +1,8 @@
 import { NgModule } from '@angular/core';
+import { NgxPlayerComponent } from './components/player/player.component';
 
 @NgModule({
-    imports: [],
-    exports: []
+    imports: [NgxPlayerComponent],
+    exports: [NgxPlayerComponent]
 })
 export class NgxPlayerModule {}
