@@ -4,6 +4,7 @@
 
 export * from './src/components/player/player.component';
 export * from './src/components/seekbar/seekbar.component';
+export * from './src/directives/fullscreen/fullscreen.directive';
 export * from './src/directives/loop/loop.directive';
 export * from './src/directives/mute/mute.directive';
 export * from './src/directives/play/play.directive';
