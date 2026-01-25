@@ -1,0 +1,62 @@
+:host {
+    width: 100%;
+}
+
+:host ::ng-deep ngx-range {
+    --progress-color: red;
+    width: calc(100% - 1rem);
+    padding: 1.5rem 0.5rem 0 0.5rem;
+
+    .segment {
+        background-image: linear-gradient(to right, var(--buffered, transparent, transparent));
+        transform: scaleY(1);
+        transition: transform 100ms ease-out;
+
+        $x-radius: calc(var(--track-height) * 4);
+        $y-radius: calc(var(--track-height) * 2);
+        &:first-child {
+            overflow: hidden;
+            border-radius: $x-radius 0 0 $x-radius / $y-radius 0 0 $y-radius;
+        }
+        &:last-child {
+            overflow: hidden;
+            border-radius: 0 $x-radius $x-radius 0 / 0 $y-radius $y-radius 0;
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            display: flex;
+            height: 100%;
+            width: 100%;
+            opacity: 0;
+            background: var(--hovered-color);
+            transform: scaleX(calc(var(--hovered, 0) * 1%));
+            transform-origin: left;
+            transition: opacity 100ms ease-out;
+        }
+    }
+
+    .thumb {
+        transform: scale(1);
+        transition: transform 100ms ease-out;
+    }
+
+    &:hover {
+        .segment {
+            transform: scaleY(1.5);
+
+            &--hovered {
+                transform: scaleY(2.5);
+            }
+
+            &::before {
+                opacity: 1;
+            }
+        }
+
+        .thumb {
+            transform: scale(1.5);
+        }
+    }
+}

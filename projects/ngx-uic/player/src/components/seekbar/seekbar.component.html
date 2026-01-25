@@ -1,0 +1,8 @@
+<ngx-range
+    [min]="0"
+    [max]="duration()"
+    [value]="currentTime()"
+    [marks]="marks()!"
+    [splits]="splits()"
+    (input)="onSeek($event)"
+/>
