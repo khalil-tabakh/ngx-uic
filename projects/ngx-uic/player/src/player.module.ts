@@ -5,6 +5,7 @@ import { NgxLoopDirective } from './directives/loop/loop.directive';
 import { NgxPlayDirective } from './directives/play/play.directive';
 import { NgxSeekDirective } from './directives/seek/seek.directive';
 import { NgxSpeedDirective } from './directives/speed/speed.directive';
+import { NgxVolumeDirective } from './directives/volume/volume.directive';
 
 @NgModule({
     imports: [
@@ -13,7 +14,8 @@ import { NgxSpeedDirective } from './directives/speed/speed.directive';
         NgxLoopDirective,
         NgxPlayDirective,
         NgxSeekDirective,
-        NgxSpeedDirective
+        NgxSpeedDirective,
+        NgxVolumeDirective
     ],
     exports: [
         NgxPlayerComponent,
@@ -21,7 +23,8 @@ import { NgxSpeedDirective } from './directives/speed/speed.directive';
         NgxLoopDirective,
         NgxPlayDirective,
         NgxSeekDirective,
-        NgxSpeedDirective
+        NgxSpeedDirective,
+        NgxVolumeDirective
     ]
 })
 export class NgxPlayerModule {}
