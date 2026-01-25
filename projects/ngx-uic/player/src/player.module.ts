@@ -3,6 +3,7 @@ import { NgxPlayerComponent } from './components/player/player.component';
 import { NgxSeekBarComponent } from './components/seekbar/seekbar.component';
 import { NgxLoopDirective } from './directives/loop/loop.directive';
 import { NgxMuteDirective } from './directives/mute/mute.directive';
+import { NgxPipDirective } from './directives/pip/pip.directive';
 import { NgxPlayDirective } from './directives/play/play.directive';
 import { NgxSeekDirective } from './directives/seek/seek.directive';
 import { NgxSpeedDirective } from './directives/speed/speed.directive';
@@ -16,6 +17,7 @@ import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.direc
         NgxFullscreenDirective,
         NgxLoopDirective,
         NgxMuteDirective,
+        NgxPipDirective,
         NgxPlayDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
@@ -27,6 +29,7 @@ import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.direc
         NgxFullscreenDirective,
         NgxLoopDirective,
         NgxMuteDirective,
+        NgxPipDirective,
         NgxPlayDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
