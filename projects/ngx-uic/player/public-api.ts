@@ -7,4 +7,5 @@ export * from './src/components/seekbar/seekbar.component';
 export * from './src/directives/loop/loop.directive';
 export * from './src/directives/play/play.directive';
 export * from './src/directives/seek/seek.directive';
+export * from './src/directives/speed/speed.directive';
 export * from './src/player.module';
