@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { NgxPlayerComponent } from './components/player/player.component';
 import { NgxSeekBarComponent } from './components/seekbar/seekbar.component';
+import { NgxLanguageDirective } from './directives/language/language.directive';
 import { NgxLoopDirective } from './directives/loop/loop.directive';
 import { NgxMuteDirective } from './directives/mute/mute.directive';
 import { NgxPipDirective } from './directives/pip/pip.directive';
@@ -15,6 +16,7 @@ import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.direc
         NgxPlayerComponent,
         NgxSeekBarComponent,
         NgxFullscreenDirective,
+        NgxLanguageDirective,
         NgxLoopDirective,
         NgxMuteDirective,
         NgxPipDirective,
@@ -27,6 +29,7 @@ import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.direc
         NgxPlayerComponent,
         NgxSeekBarComponent,
         NgxFullscreenDirective,
+        NgxLanguageDirective,
         NgxLoopDirective,
         NgxMuteDirective,
         NgxPipDirective,
