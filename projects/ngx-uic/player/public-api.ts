@@ -10,6 +10,7 @@ export * from './src/directives/loop/loop.directive';
 export * from './src/directives/mute/mute.directive';
 export * from './src/directives/pip/pip.directive';
 export * from './src/directives/play/play.directive';
+export * from './src/directives/resolution/resolution.directive';
 export * from './src/directives/seek/seek.directive';
 export * from './src/directives/speed/speed.directive';
 export * from './src/directives/volume/volume.directive';
