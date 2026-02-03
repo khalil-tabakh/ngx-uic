@@ -148,9 +148,9 @@ export class NgxSeekBarComponent {
         if (!media) return;
         const range = this.rangeRef().nativeElement;
         const paused = media.paused;
-        media.pause();
+        if (media.getElementsByTagName('source').length) media.pause();
         const unlistenPointerup = this.renderer.listen(range, 'pointerup', () => {
-            paused ? media.pause() : media.play().catch(() => {});
+            if (media.getElementsByTagName('source').length) paused ? media.pause() : media.play().catch(() => {});
             unlistenPointerup();
         });
     }

@@ -104,6 +104,6 @@ export class NgxLanguageDirective {
         const paused = media.paused;
         media.load();
         media.currentTime = currentTime;
-        if (!paused) media.play().catch(() => {});
+        if (media.getElementsByTagName('source').length && !paused) media.play().catch(() => {});
     }
 }

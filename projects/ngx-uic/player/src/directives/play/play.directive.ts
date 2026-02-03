@@ -44,7 +44,9 @@ export class NgxPlayDirective {
         });
     });
     private toggle$ = effect(() => {
-        this.paused() ? this.audio()?.pause() : this.audio()?.play().catch(() => {});
-        this.paused() ? this.video()?.pause() : this.video()?.play().catch(() => {});
+        const audio = this.audio();
+        if (audio?.getElementsByTagName('source').length) this.paused() ? audio.pause() : audio.play().catch(() => {});
+        const video = this.video();
+        if (video?.getElementsByTagName('source').length) this.paused() ? video.pause() : video.play().catch(() => {});
     });
 }

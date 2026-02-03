@@ -93,6 +93,6 @@ export class NgxResolutionDirective {
         const paused = video.paused;
         video.load();
         video.currentTime = currentTime;
-        if (!paused) video.play().catch(() => {});
+        if (video.getElementsByTagName('source').length && !paused) video.play().catch(() => {});
     });
 }

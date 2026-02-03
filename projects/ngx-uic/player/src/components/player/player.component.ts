@@ -7,7 +7,7 @@ import { Component, DOCUMENT, ElementRef, Renderer2, computed, effect, inject, i
     templateUrl: './player.component.html',
     styleUrl: './player.component.scss',
     host: {
-        '(click)': 'media()?.paused ? media()?.play()?.catch() : media()?.pause()',
+        '(click)': 'onClick()',
         '(dblclick)': 'document.fullscreenElement ? document.exitFullscreen() : element.requestFullscreen()'
     }
 })
@@ -25,16 +25,21 @@ export class NgxPlayerComponent {
         const audio = this.audio();
         const video = this.video();
         if (!audio || !video) return;
-        const unlistenPause = this.renderer.listen(video, 'pause', () => audio.pause());
+        const unlistenPause = this.renderer.listen(video, 'pause', () => !!audio.getElementsByTagName('source').length && audio.pause());
         const unlistenPlaying = this.renderer.listen(video, 'playing', () => {
             audio.currentTime = video.currentTime;
-            audio.play().catch();
+            if (audio.getElementsByTagName('source').length) audio.play().catch();
         });
-        const unlistenWaiting = this.renderer.listen(video, 'waiting', () => audio.pause());
+        const unlistenWaiting = this.renderer.listen(video, 'waiting', () => !!audio.getElementsByTagName('source').length && audio.pause());
         onCleanup(() => {
             unlistenPause();
             unlistenPlaying();
             unlistenWaiting();
         });
     });
+
+    protected onClick(): void {
+        const media = this.media();
+        if (media?.getElementsByTagName('source').length) media.paused ? media.play().catch(() => {}) : media.pause();
+    }
 }

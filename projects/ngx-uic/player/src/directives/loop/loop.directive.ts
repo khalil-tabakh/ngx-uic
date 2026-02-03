@@ -29,7 +29,9 @@ export class NgxLoopDirective {
         if (this.video()) this.video()!.loop = this.loop();
         const media: HTMLMediaElement | undefined = this.video() || this.audio();
         if (!media || !this.loop()) return;
-        if (this.audio()?.ended) this.audio()?.play().catch(() => {});
-        if (this.video()?.ended) this.video()?.play().catch(() => {});
+        const audio = this.audio();
+        if (audio?.getElementsByTagName('source').length && audio.ended) audio.play().catch(() => {});
+        const video = this.video();
+        if (video?.getElementsByTagName('source').length && video.ended) video.play().catch(() => {});
     });
 }
