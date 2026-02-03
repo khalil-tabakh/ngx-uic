@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { NgxPlayerComponent } from './components/player/player.component';
 import { NgxSeekBarComponent } from './components/seekbar/seekbar.component';
 import { NgxBitrateDirective } from './directives/bitrate/bitrate.directive';
+import { NgxCaptionDirective } from './directives/caption/caption.directive';
 import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.directive';
 import { NgxLanguageDirective } from './directives/language/language.directive';
 import { NgxLoopDirective } from './directives/loop/loop.directive';
@@ -18,6 +19,7 @@ import { NgxVolumeDirective } from './directives/volume/volume.directive';
         NgxPlayerComponent,
         NgxSeekBarComponent,
         NgxBitrateDirective,
+        NgxCaptionDirective,
         NgxFullscreenDirective,
         NgxLanguageDirective,
         NgxLoopDirective,
@@ -33,6 +35,7 @@ import { NgxVolumeDirective } from './directives/volume/volume.directive';
         NgxPlayerComponent,
         NgxSeekBarComponent,
         NgxBitrateDirective,
+        NgxCaptionDirective,
         NgxFullscreenDirective,
         NgxLanguageDirective,
         NgxLoopDirective,
