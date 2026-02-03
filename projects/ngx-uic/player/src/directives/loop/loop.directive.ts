@@ -1,4 +1,4 @@
-import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angular/core';
+import { Directive, effect, input, linkedSignal } from '@angular/core';
 
 @Directive({
     selector: '[ngxLoop]',
@@ -9,8 +9,6 @@ import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angu
     exportAs: 'ngxLoop'
 })
 export class NgxLoopDirective {
-    private renderer = inject(Renderer2);
-
     readonly audio = input<HTMLAudioElement>();
     readonly video = input<HTMLVideoElement>();
 
@@ -26,17 +24,12 @@ export class NgxLoopDirective {
         mutation$.observe(media, { attributeFilter: ['loop'] });
         onCleanup(() => mutation$.disconnect());
     });
-    private toggle$ = effect((onCleanup) => {
+    private toggle$ = effect(() => {
         if (this.audio()) this.audio()!.loop = this.loop();
         if (this.video()) this.video()!.loop = this.loop();
         const media: HTMLMediaElement | undefined = this.video() || this.audio();
         if (!media || !this.loop()) return;
         if (this.audio()?.ended) this.audio()?.play().catch(() => {});
         if (this.video()?.ended) this.video()?.play().catch(() => {});
-        const unlistenEnded = this.renderer.listen(media, 'ended', () => {
-            this.audio()?.play().catch(() => {});
-            this.video()?.play().catch(() => {});
-        });
-        onCleanup(() => unlistenEnded());
     });
 }
