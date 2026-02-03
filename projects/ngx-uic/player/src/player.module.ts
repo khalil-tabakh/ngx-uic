@@ -13,6 +13,7 @@ import { NgxResolutionDirective } from './directives/resolution/resolution.direc
 import { NgxSeekDirective } from './directives/seek/seek.directive';
 import { NgxSpeedDirective } from './directives/speed/speed.directive';
 import { NgxVolumeDirective } from './directives/volume/volume.directive';
+import { NgxTimePipe } from './pipes/time/time.pipe';
 
 @NgModule({
     imports: [
@@ -29,7 +30,8 @@ import { NgxVolumeDirective } from './directives/volume/volume.directive';
         NgxResolutionDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
-        NgxVolumeDirective
+        NgxVolumeDirective,
+        NgxTimePipe
     ],
     exports: [
         NgxPlayerComponent,
@@ -45,7 +47,8 @@ import { NgxVolumeDirective } from './directives/volume/volume.directive';
         NgxResolutionDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
-        NgxVolumeDirective
+        NgxVolumeDirective,
+        NgxTimePipe
     ]
 })
 export class NgxPlayerModule {}
