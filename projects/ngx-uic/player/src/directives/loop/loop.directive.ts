@@ -30,8 +30,10 @@ export class NgxLoopDirective {
         const media: HTMLMediaElement | undefined = this.video() || this.audio();
         if (!media || !this.loop()) return;
         const audio = this.audio();
-        if (audio?.getElementsByTagName('source').length && audio.ended) audio.play().catch(() => {});
+        const audioEnded = audio?.ended || audio?.currentTime === audio?.duration;
+        if (audio?.getElementsByTagName('source').length && audioEnded) audio.play().catch(() => {});
         const video = this.video();
-        if (video?.getElementsByTagName('source').length && video.ended) video.play().catch(() => {});
+        const videoEnded = video?.ended || video?.currentTime === video?.duration;
+        if (video?.getElementsByTagName('source').length && videoEnded) video.play().catch(() => {});
     });
 }
