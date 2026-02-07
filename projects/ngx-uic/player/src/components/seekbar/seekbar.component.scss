@@ -8,19 +8,20 @@
     padding: 1.5rem 0.5rem 0 0.5rem;
 
     .segment {
+        --segment-scale-y: 1;
         background-image: linear-gradient(to right, var(--buffered, transparent, transparent));
-        transform: scaleY(1);
-        transition: transform 100ms ease-out;
+        transform: scaleY(var(--segment-scale-y));
+        transition: transform 100ms ease-out, border-radius 100ms ease-out;
 
-        $x-radius: calc(var(--track-height) * 4);
-        $y-radius: calc(var(--track-height) * 2);
         &:first-child {
             overflow: hidden;
-            border-radius: $x-radius 0 0 $x-radius / $y-radius 0 0 $y-radius;
+            border-top-left-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
+            border-bottom-left-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
         }
         &:last-child {
             overflow: hidden;
-            border-radius: 0 $x-radius $x-radius 0 / 0 $y-radius $y-radius 0;
+            border-top-right-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
+            border-bottom-right-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
         }
 
         &::before {
@@ -44,10 +45,10 @@
 
     &:hover {
         .segment {
-            transform: scaleY(1.5);
+            --segment-scale-y: 1.5;
 
             &--hovered {
-                transform: scaleY(2.5);
+                --segment-scale-y: 2.5;
             }
 
             &::before {
