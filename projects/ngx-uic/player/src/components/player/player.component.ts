@@ -25,12 +25,12 @@ export class NgxPlayerComponent {
         const audio = this.audio();
         const video = this.video();
         if (!audio || !video) return;
-        const unlistenPause = this.renderer.listen(video, 'pause', () => !!audio.getElementsByTagName('source').length && audio.pause());
+        const unlistenPause = this.renderer.listen(video, 'pause', () => !!audio.currentSrc && audio.pause());
         const unlistenPlaying = this.renderer.listen(video, 'playing', () => {
             audio.currentTime = video.currentTime;
-            if (audio.getElementsByTagName('source').length) audio.play().catch();
+            if (audio.currentSrc) audio.play().catch();
         });
-        const unlistenWaiting = this.renderer.listen(video, 'waiting', () => !!audio.getElementsByTagName('source').length && audio.pause());
+        const unlistenWaiting = this.renderer.listen(video, 'waiting', () => !!audio.currentSrc && audio.pause());
         onCleanup(() => {
             unlistenPause();
             unlistenPlaying();
@@ -40,6 +40,6 @@ export class NgxPlayerComponent {
 
     protected onClick(): void {
         const media = this.media();
-        if (media?.getElementsByTagName('source').length) media.paused ? media.play().catch(() => {}) : media.pause();
+        if (media?.currentSrc) media.paused ? media.play().catch(() => {}) : media.pause();
     }
 }

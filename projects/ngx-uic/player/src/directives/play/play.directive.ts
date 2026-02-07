@@ -45,8 +45,8 @@ export class NgxPlayDirective {
     });
     private toggle$ = effect(() => {
         const audio = this.audio();
-        if (audio?.getElementsByTagName('source').length) this.paused() ? audio.pause() : audio.play().catch(() => {});
+        if (audio?.currentSrc) this.paused() ? audio.pause() : audio.play().catch(() => {});
         const video = this.video();
-        if (video?.getElementsByTagName('source').length) this.paused() ? video.pause() : video.play().catch(() => {});
+        if (video?.currentSrc) this.paused() ? video.pause() : video.play().catch(() => {});
     });
 }

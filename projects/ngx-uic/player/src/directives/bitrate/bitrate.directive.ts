@@ -96,6 +96,6 @@ export class NgxBitrateDirective {
         const paused = audio.paused;
         audio.load();
         audio.currentTime = currentTime;
-        if (audio.getElementsByTagName('source').length && !paused) audio.play().catch(() => {});
+        if (audio.currentSrc && !paused) audio.play().catch(() => {});
     });
 }
