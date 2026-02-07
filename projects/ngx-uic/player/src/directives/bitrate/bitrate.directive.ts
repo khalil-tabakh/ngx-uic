@@ -45,7 +45,8 @@ export class NgxBitrateDirective {
     });
 
     readonly bitrate = linkedSignal(() => {
-        const bitrate = Number(this.audio().dataset['bitrate'] || '');
+        const source = this.sources.value().find((source) => source.src === this.audio().currentSrc);
+        const bitrate = Number(source?.dataset['bitrate'] || this.audio().dataset['bitrate'] || '');
         return this.bitrates().includes(bitrate) ? bitrate : 0;
     });
 

@@ -43,7 +43,8 @@ export class NgxResolutionDirective {
     });
 
     readonly resolution = linkedSignal(() => {
-        const resolution = Number(this.video().dataset['resolution'] || '');
+        const source = this.sources.value().find((source) => source.src === this.video().currentSrc);
+        const resolution = Number(source?.dataset['resolution'] || this.video().dataset['resolution'] || '');
         return this.resolutions().includes(resolution) ? resolution : 0;
     });
 
