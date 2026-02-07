@@ -40,8 +40,8 @@ export class NgxLanguageDirective {
         const audio = this.audio();
         if (!audio) return;
         const unlistenLoadstart = this.renderer.listen(audio, 'loadstart', () => {
-            const language = this.audioSources().find((source) => source.src === audio.currentSrc)?.lang || '';
-            this.audioLanguage.set(language);
+            const source = this.audioSources().find((source) => source.src === audio.currentSrc);
+            this.audioLanguage.set(source?.lang || '');
         });
         const mutation$ = new MutationObserver(() => this.audioLanguage.set(audio.lang));
         mutation$.observe(audio, { attributeFilter: ['lang'] });
@@ -65,8 +65,8 @@ export class NgxLanguageDirective {
         const video = this.video();
         if (!video) return;
         const unlistenLoadstart = this.renderer.listen(video, 'loadstart', () => {
-            const language = this.videoSources().find((source) => source.src === video.currentSrc)?.lang || '';
-            this.videoLanguage.set(language);
+            const source = this.videoSources().find((source) => source.src === video.currentSrc);
+            this.videoLanguage.set(source?.lang || '');
         });
         const mutation$ = new MutationObserver(() => this.videoLanguage.set(video.lang));
         mutation$.observe(video, { attributeFilter: ['lang'] });

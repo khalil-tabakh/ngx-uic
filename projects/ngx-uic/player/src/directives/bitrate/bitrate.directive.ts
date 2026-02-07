@@ -51,8 +51,8 @@ export class NgxBitrateDirective {
 
     private bitrate$ = effect((onCleanup) => {
         const unlistenLoadstart = this.renderer.listen(this.audio(), 'loadstart', () => {
-            const bitrate = this.sources.value().find((source) => source.src === this.audio().currentSrc)?.dataset['bitrate'] || '';
-            this.bitrate.set(Number(bitrate));
+            const source = this.sources.value().find((source) => source.src === this.audio().currentSrc);
+            this.bitrate.set(Number(source?.dataset['bitrate'] || ''));
         });
         const mutation$ = new MutationObserver(() => this.bitrate.set(Number(this.audio().dataset['bitrate'] || '')));
         mutation$.observe(this.audio(), { attributeFilter: ['data-bitrate'] });

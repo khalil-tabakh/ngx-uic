@@ -49,8 +49,8 @@ export class NgxResolutionDirective {
 
     private resolution$ = effect((onCleanup) => {
         const unlistenLoadstart = this.renderer.listen(this.video(), 'loadstart', () => {
-            const resolution = this.sources.value().find((source) => source.src === this.video().currentSrc)?.dataset['resolution'] || '';
-            this.resolution.set(Number(resolution));
+            const source = this.sources.value().find((source) => source.src === this.video().currentSrc);
+            this.resolution.set(Number(source?.dataset['resolution'] || ''));
         });
         const mutation$ = new MutationObserver(() => this.resolution.set(Number(this.video().dataset['resolution'] || '')));
         mutation$.observe(this.video(), { attributeFilter: ['data-resolution'] });
