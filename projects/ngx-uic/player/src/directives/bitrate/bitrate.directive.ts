@@ -39,9 +39,9 @@ export class NgxBitrateDirective {
     });
 
     readonly bitrates = linkedSignal(() => {
-        const sources = this.sources.value().filter((source) => source.lang === this.audio().lang || !this.audio().lang);
+        const sources = this.sources.value().reverse().filter((source) => source.lang === this.audio().lang || !this.audio().lang);
         const bitrates = sources.map((source) => Number(source.dataset['bitrate']));
-        return new Set(bitrates).values().toArray().sort((a, b) => b - a);
+        return new Set(bitrates).values().toArray();
     });
 
     readonly bitrate = linkedSignal(() => {
@@ -63,9 +63,9 @@ export class NgxBitrateDirective {
     });
     private bitrates$ = effect((onCleanup) => {
         const mutation$ = new MutationObserver(() => {
-            const sources = this.sources.value().filter((source) => source.lang === this.audio().lang || !this.audio().lang);
+            const sources = this.sources.value().reverse().filter((source) => source.lang === this.audio().lang || !this.audio().lang);
             const bitrates = sources.map((source) => Number(source.dataset['bitrate']));
-            this.bitrates.set(new Set(bitrates).values().toArray().sort((a, b) => b - a));
+            this.bitrates.set(new Set(bitrates).values().toArray());
         });
         mutation$.observe(this.audio(), { attributeFilter: ['lang'] });
         onCleanup(() => mutation$.disconnect());

@@ -23,15 +23,15 @@ export class NgxLanguageDirective {
         return sources.filter((source) => source.lang).reverse();
     });
 
-    private audioLanguages = computed(() => this.audioSources().map((source) => source.lang));
-    private videoLanguages = computed(() => this.videoSources().map((source) => source.lang));
+    private audioLanguages = computed(() => this.audioSources().reverse().map((source) => source.lang));
+    private videoLanguages = computed(() => this.videoSources().reverse().map((source) => source.lang));
 
     private audioLanguage = linkedSignal(() => this.audioLanguages().find((language) => language === this.audio()?.lang) || '');
     private videoLanguage = linkedSignal(() => this.videoLanguages().find((language) => language === this.video()?.lang) || '');
 
     readonly languages = computed(() => {
         const languages = this.audioLanguages().concat(this.videoLanguages());
-        return new Set(languages).values().toArray().sort();
+        return new Set(languages).values().toArray();
     });
 
     readonly language = linkedSignal(() => this.audioLanguage() || this.videoLanguage());

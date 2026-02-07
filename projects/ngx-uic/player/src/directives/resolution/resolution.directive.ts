@@ -37,9 +37,9 @@ export class NgxResolutionDirective {
     });
 
     readonly resolutions = linkedSignal(() => {
-        const sources = this.sources.value().filter((source) => source.lang === this.video().lang || !this.video().lang);
+        const sources = this.sources.value().reverse().filter((source) => source.lang === this.video().lang || !this.video().lang);
         const resolutions = sources.map((source) => Number(source.dataset['resolution']));
-        return new Set(resolutions).values().toArray().sort((a, b) => b - a);
+        return new Set(resolutions).values().toArray();
     });
 
     readonly resolution = linkedSignal(() => {
@@ -61,9 +61,9 @@ export class NgxResolutionDirective {
     });
     private resolutions$ = effect((onCleanup) => {
         const mutation$ = new MutationObserver(() => {
-            const sources = this.sources.value().filter((source) => source.lang === this.video().lang || !this.video().lang);
+            const sources = this.sources.value().reverse().filter((source) => source.lang === this.video().lang || !this.video().lang);
             const resolutions = sources.map((source) => Number(source.dataset['resolution']));
-            this.resolutions.set(new Set(resolutions).values().toArray().sort((a, b) => b - a));
+            this.resolutions.set(new Set(resolutions).values().toArray());
         });
         mutation$.observe(this.video(), { attributeFilter: ['lang'] });
         onCleanup(() => mutation$.disconnect());
