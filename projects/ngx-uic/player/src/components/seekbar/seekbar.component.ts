@@ -109,10 +109,19 @@ export class NgxSeekBarComponent {
         const buffered: [number, number][] = [];
         for (let i = 0; i < media.buffered.length; ++i) buffered.push([media.buffered.start(i), media.buffered.end(i)]);
         this.buffered.set(buffered);
-        // Force recheck every half remaining buffered time because "progress" event isn't reliable at the media end
-        const closest = buffered.find(([_, end]) => end >= media.currentTime)?.at(1)!;
-        const timeout = Math.floor((closest - media.currentTime) / 2) * 1000;
-        if (timeout && closest < this.duration() && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
+        // Because "progress" event doesn't reliably trigger at the media end or on media reload
+        const closest = buffered.find(([_, end]) => end >= media.currentTime)?.at(1) || 0;
+        if (closest) {
+            // Force recheck every half remaining buffered time
+            const timeout = Math.ceil((closest - media.currentTime) / 2) * 1000;
+            if (timeout > 0 && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
+        } else {
+            // Force recheck the next time the media time update
+            const unlistenTimeupdate = this.renderer.listen(media, 'timeupdate', () => {
+                unlistenTimeupdate();
+                this.setBuffered();
+            });
+        }
     }
 
     protected onHovering(): void {
