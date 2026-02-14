@@ -1,4 +1,5 @@
-import { DOCUMENT, Directive, effect, inject, input, signal } from '@angular/core';
+import { DOCUMENT, Directive, effect, inject, signal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxPip]',
@@ -12,13 +13,12 @@ import { DOCUMENT, Directive, effect, inject, input, signal } from '@angular/cor
 })
 export class NgxPipDirective {
     private document = inject(DOCUMENT);
-
-    readonly video = input.required<HTMLVideoElement>();
+    private player = inject(NgxPlayerComponent);
 
     readonly pip = signal(false);
 
     private pip$ = effect(() => {
-        if (this.pip()) this.video().requestPictureInPicture?.();
+        if (this.pip()) this.player.video()?.requestPictureInPicture?.();
         else if (this.document.pictureInPictureElement) this.document.exitPictureInPicture();
     });
 }

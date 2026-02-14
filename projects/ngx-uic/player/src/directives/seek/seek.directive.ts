@@ -1,4 +1,5 @@
-import { Directive, input } from '@angular/core';
+import { Directive, inject, input } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxSeek]',
@@ -9,16 +10,18 @@ import { Directive, input } from '@angular/core';
     exportAs: 'ngxSeek'
 })
 export class NgxSeekDirective {
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
+    private player = inject(NgxPlayerComponent);
+
     readonly value = input.required<number>();
 
     protected onSeek(event: PointerEvent): void {
         event.stopPropagation();
-        const duration = this.video()?.duration ?? this.audio()?.duration ?? 0
-        const currentTime = this.video()?.currentTime ?? this.audio()?.currentTime ?? 0;
-        const nextTime = Math.min(Math.max(currentTime + this.value(), 0), duration);
-        if (this.audio()) this.audio()!.currentTime = nextTime;
-        if (this.video()) this.video()!.currentTime = nextTime;
+        const audio = this.player.audio();
+        const video = this.player.video();
+        const duration = video?.duration ?? audio?.duration ?? 0
+        const oldTime = video?.currentTime ?? audio?.currentTime ?? 0;
+        const newTime = Math.min(Math.max(oldTime + this.value(), 0), duration);
+        if (audio) audio.currentTime = newTime;
+        if (video) video.currentTime = newTime;
     }
 }

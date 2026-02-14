@@ -1,4 +1,5 @@
-import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angular/core';
+import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxPlay]',
@@ -9,22 +10,20 @@ import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angu
     exportAs: 'ngxPlay'
 })
 export class NgxPlayDirective {
+    private player = inject(NgxPlayerComponent);
     private renderer = inject(Renderer2);
 
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
-
     readonly ended = linkedSignal({
-        source: () => ({ audio: this.audio(), video: this.video() }),
+        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.ended ?? audio?.ended ?? false
     });
     readonly paused = linkedSignal({
-        source: () => ({ audio: this.audio(), video: this.video(), ended: this.ended() }),
+        source: () => ({ audio: this.player.audio(), video: this.player.video(), ended: this.ended() }),
         computation: ({ audio, video }) => video?.paused ?? audio?.paused ?? true
     });
 
     private ended$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const unlistenCanplay = this.renderer.listen(media, 'canplay', () => this.ended.set(false));
         const unlistenEnded = this.renderer.listen(media, 'ended', () => this.ended.set(true));
@@ -34,7 +33,7 @@ export class NgxPlayDirective {
         });
     });
     private paused$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const unlistenPause = this.renderer.listen(media, 'pause', () => this.paused.set(true));
         const unlistenPlaying = this.renderer.listen(media, 'play', () => this.paused.set(false));
@@ -44,9 +43,10 @@ export class NgxPlayDirective {
         });
     });
     private toggle$ = effect(() => {
-        const audio = this.audio();
-        if (audio?.currentSrc) this.paused() ? audio.pause() : audio.play().catch(() => {});
-        const video = this.video();
-        if (video?.currentSrc) this.paused() ? video.pause() : video.play().catch(() => {});
+        const paused = this.paused();
+        const audio = this.player.audio();
+        if (audio?.currentSrc) paused ? audio.pause() : audio.play().catch(() => {});
+        const video = this.player.video();
+        if (video?.currentSrc) paused ? video.pause() : video.play().catch(() => {});
     });
 }

@@ -1,4 +1,5 @@
-import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angular/core';
+import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxMute]',
@@ -9,18 +10,16 @@ import { Directive, Renderer2, effect, inject, input, linkedSignal } from '@angu
     exportAs: 'ngxMute'
 })
 export class NgxMuteDirective {
+    private player = inject(NgxPlayerComponent);
     private renderer = inject(Renderer2);
 
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
-
     readonly muted = linkedSignal({
-        source: () => ({ audio: this.audio(), video: this.video() }),
+        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.muted ?? audio?.muted ?? false
     });
 
     private muted$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const mutation$ = new MutationObserver(() => this.muted.set(media.muted));
         mutation$.observe(media, { attributeFilter: ['muted'] });
@@ -31,7 +30,7 @@ export class NgxMuteDirective {
         });
     });
     private toggle$ = effect(() => {
-        if (this.audio()) this.audio()!.muted = this.muted();
-        if (this.video()) this.video()!.muted = this.muted();
+        if (this.player.audio()) this.player.audio()!.muted = this.muted();
+        if (this.player.video()) this.player.video()!.muted = this.muted();
     });
 }

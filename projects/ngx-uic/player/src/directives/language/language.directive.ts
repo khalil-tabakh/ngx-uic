@@ -1,4 +1,5 @@
-import { Directive, Renderer2, computed, effect, inject, input, linkedSignal } from '@angular/core';
+import { Directive, Renderer2, computed, effect, inject, linkedSignal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxLanguage]',
@@ -9,25 +10,17 @@ import { Directive, Renderer2, computed, effect, inject, input, linkedSignal } f
     exportAs: 'ngxLanguage'
 })
 export class NgxLanguageDirective {
+    private player = inject(NgxPlayerComponent);
     private renderer = inject(Renderer2);
 
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
-
-    private audioSources = linkedSignal(() => {
-        const sources = Array.from(this.audio()?.getElementsByTagName('source') || []);
-        return sources.filter((source) => source.lang).reverse();
-    });
-    private videoSources = linkedSignal(() => {
-        const sources = Array.from(this.video()?.getElementsByTagName('source') || []);
-        return sources.filter((source) => source.lang).reverse();
-    });
+    private audioSources = computed(() => this.player.audioSources().filter((source) => source.lang).reverse());
+    private videoSources = computed(() => this.player.videoSources().filter((source) => source.lang).reverse());
 
     private audioLanguages = computed(() => this.audioSources().reverse().map((source) => source.lang));
     private videoLanguages = computed(() => this.videoSources().reverse().map((source) => source.lang));
 
-    private audioLanguage = linkedSignal(() => this.audioLanguages().find((language) => language === this.audio()?.lang) || '');
-    private videoLanguage = linkedSignal(() => this.videoLanguages().find((language) => language === this.video()?.lang) || '');
+    private audioLanguage = linkedSignal(() => this.audioLanguages().find((language) => language === this.player.audio()?.lang) || '');
+    private videoLanguage = linkedSignal(() => this.videoLanguages().find((language) => language === this.player.video()?.lang) || '');
 
     readonly languages = computed(() => {
         const languages = this.audioLanguages().concat(this.videoLanguages());
@@ -37,7 +30,7 @@ export class NgxLanguageDirective {
     readonly language = linkedSignal(() => this.audioLanguage() || this.videoLanguage());
 
     private audioLanguage$ = effect((onCleanup) => {
-        const audio = this.audio();
+        const audio = this.player.audio();
         if (!audio) return;
         const unlistenLoadstart = this.renderer.listen(audio, 'loadstart', () => {
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
@@ -50,19 +43,8 @@ export class NgxLanguageDirective {
             mutation$.disconnect();
         });
     });
-    private audioSources$ = effect((onCleanup) => {
-        const oldSources = Array.from(this.audio()?.getElementsByTagName('source') || []);
-        const unlistenErrors = oldSources.map((oldSource) => {
-            return this.renderer.listen(oldSource, 'error', () => {
-                oldSource.remove();
-                if (this.audioSources().includes(oldSource))
-                    this.audioSources.update((newSources) => newSources.filter((newSource) => newSource !== oldSource));
-            });
-        });
-        onCleanup(() => unlistenErrors.forEach((unlistenError) => unlistenError()));
-    });
     private videoLanguage$ = effect((onCleanup) => {
-        const video = this.video();
+        const video = this.player.video();
         if (!video) return;
         const unlistenLoadstart = this.renderer.listen(video, 'loadstart', () => {
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
@@ -75,22 +57,13 @@ export class NgxLanguageDirective {
             mutation$.disconnect();
         });
     });
-    private videoSources$ = effect((onCleanup) => {
-        const oldSources = Array.from(this.video()?.getElementsByTagName('source') || []);
-        const unlistenErrors = oldSources.map((oldSource) => {
-            return this.renderer.listen(oldSource, 'error', () => {
-                oldSource.remove();
-                if (this.videoSources().includes(oldSource))
-                    this.videoSources.update((newSources) => newSources.filter((newSource) => newSource !== oldSource));
-            });
-        });
-        onCleanup(() => unlistenErrors.forEach((unlistenError) => unlistenError()));
-    });
     private switch$ = effect(() => {
-        if (this.audio()) this.refreshSources(this.audio()!, this.audioSources(), this.language());
-        const sources = Array.from(this.audio()?.getElementsByTagName('source') || []);
+        const audio = this.player.audio();
+        if (audio) this.refreshSources(audio, this.audioSources(), this.language());
+        const sources = Array.from(audio?.getElementsByTagName('source') || []);
         const language = !sources.find((source) => source.lang === this.language()) ? this.language() : '';
-        if (this.video()) this.refreshSources(this.video()!, this.videoSources(), language);
+        const video = this.player.video();
+        if (video) this.refreshSources(video, this.videoSources(), language);
     });
 
     private refreshSources(media: HTMLMediaElement, sources: HTMLSourceElement[], language: string): void {

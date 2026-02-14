@@ -1,4 +1,5 @@
-import { Component, ElementRef, Renderer2, RendererStyleFlags2, afterRenderEffect, computed, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, Renderer2, RendererStyleFlags2, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { NgxPlayerComponent } from '../player/player.component';
 import { NgxRangeComponent, between } from '../../../../range/public-api';
 
 @Component({
@@ -14,10 +15,9 @@ import { NgxRangeComponent, between } from '../../../../range/public-api';
     }
 })
 export class NgxSeekBarComponent {
+    private player = inject(NgxPlayerComponent);
     private renderer = inject(Renderer2);
-    
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
+
     readonly marks = input<number[]>([]);
     readonly splits = input<number[]>([]);
 
@@ -29,13 +29,11 @@ export class NgxSeekBarComponent {
     readonly buffered = signal<[number, number][]>([]);
     readonly hovered = signal(0);
 
-    private media = computed(() => this.video() || this.audio());
-
-    readonly currentTime = linkedSignal(() => this.media()?.currentTime || 0);
-    readonly duration = linkedSignal(() => this.media()?.duration || 0);
+    readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0);
+    readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0);
 
     private buffered$ = effect((onCleanup) => {
-        const media = this.media();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const unlistenLoadstart = this.renderer.listen(media, 'loadstart', () => this.buffered.set([]));
         const unlistenProgress = this.renderer.listen(media, 'progress', () => this.setBuffered());
@@ -47,13 +45,13 @@ export class NgxSeekBarComponent {
         });
     });
     private currentTime$ = effect((onCleanup) => {
-        const media = this.media();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const unlistenTimeupdate = this.renderer.listen(media, 'timeupdate', () => this.currentTime.set(media.currentTime));
         onCleanup(() => unlistenTimeupdate());
     });
     private duration$ = effect((onCleanup) => {
-        const media = this.media();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const unlistenDurationchange = this.renderer.listen(media, 'durationchange', () => this.duration.set(media.duration));
         onCleanup(() => unlistenDurationchange());
@@ -104,7 +102,7 @@ export class NgxSeekBarComponent {
 
     private setBuffered(): void {
         clearTimeout(this.timer$);
-        const media = this.media();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const buffered: [number, number][] = [];
         for (let i = 0; i < media.buffered.length; ++i) buffered.push([media.buffered.start(i), media.buffered.end(i)]);
@@ -147,13 +145,13 @@ export class NgxSeekBarComponent {
     }
 
     protected onSeek(value: number): void {
-        if (this.audio()) this.audio()!.currentTime = value;
-        if (this.video()) this.video()!.currentTime = value;
+        if (this.player.audio()) this.player.audio()!.currentTime = value;
+        if (this.player.video()) this.player.video()!.currentTime = value;
         this.currentTime.set(value);
     }
 
     protected onSeeking(): void {
-        const media = this.media();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const range = this.rangeRef().nativeElement;
         const paused = media.paused;

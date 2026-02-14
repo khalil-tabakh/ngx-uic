@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, ElementRef, effect, inject, input, signal } from '@angular/core';
+import { DOCUMENT, Directive, ElementRef, afterRenderEffect, inject, input, signal } from '@angular/core';
 
 @Directive({
     selector: '[ngxFullscreen]',
@@ -13,13 +13,15 @@ export class NgxFullscreenDirective {
     protected document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-    readonly video = input.required<HTMLVideoElement>();
     readonly selector = input('ngx-player');
 
     readonly fullscreen = signal(false);
 
-    private toggle$ = effect(() => {
-        if (this.fullscreen()) this.element.closest(this.selector())?.requestFullscreen();
-        else if (this.document.fullscreenElement) this.document.exitFullscreen();
+    private toggle$ = afterRenderEffect({
+        earlyRead: () => this.element.closest(this.selector()),
+        write: (player) => {
+            if (this.fullscreen()) player()?.requestFullscreen();
+            else if (this.document.fullscreenElement) this.document.exitFullscreen();
+        }
     });
 }

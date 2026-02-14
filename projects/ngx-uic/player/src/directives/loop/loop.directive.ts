@@ -1,4 +1,5 @@
-import { Directive, effect, input, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxLoop]',
@@ -9,30 +10,29 @@ import { Directive, effect, input, linkedSignal } from '@angular/core';
     exportAs: 'ngxLoop'
 })
 export class NgxLoopDirective {
-    readonly audio = input<HTMLAudioElement>();
-    readonly video = input<HTMLVideoElement>();
+    private player = inject(NgxPlayerComponent);
 
     readonly loop = linkedSignal({
-        source: () => ({ audio: this.audio(), video: this.video() }),
+        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.loop ?? audio?.loop ?? false
     });
 
     private loop$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const mutation$ = new MutationObserver(() => this.loop.set(media.loop));
         mutation$.observe(media, { attributeFilter: ['loop'] });
         onCleanup(() => mutation$.disconnect());
     });
     private toggle$ = effect(() => {
-        if (this.audio()) this.audio()!.loop = this.loop();
-        if (this.video()) this.video()!.loop = this.loop();
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
+        if (this.player.audio()) this.player.audio()!.loop = this.loop();
+        if (this.player.video()) this.player.video()!.loop = this.loop();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media || !this.loop()) return;
-        const audio = this.audio();
+        const audio = this.player.audio();
         const audioEnded = audio?.ended || audio?.currentTime === audio?.duration;
         if (audio?.currentSrc && audioEnded) audio.play().catch(() => {});
-        const video = this.video();
+        const video = this.player.video();
         const videoEnded = video?.ended || video?.currentTime === video?.duration;
         if (video?.currentSrc && videoEnded) video.play().catch(() => {});
     });
