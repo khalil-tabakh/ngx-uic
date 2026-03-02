@@ -17,10 +17,7 @@ export class NgxPlayDirective {
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.ended ?? audio?.ended ?? false
     });
-    readonly paused = linkedSignal({
-        source: () => ({ audio: this.player.audio(), video: this.player.video(), ended: this.ended() }),
-        computation: ({ audio, video }) => video?.paused ?? audio?.paused ?? true
-    });
+    readonly paused = linkedSignal(() => this.player.isPaused());
 
     private ended$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
@@ -35,7 +32,7 @@ export class NgxPlayDirective {
     private paused$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenPause = this.renderer.listen(media, 'pause', () => this.paused.set(true));
+        const unlistenPause = this.renderer.listen(media, 'pause', () => this.paused.set(!this.player.isLoading()));
         const unlistenPlaying = this.renderer.listen(media, 'play', () => this.paused.set(false));
         onCleanup(() => {
             unlistenPause();
@@ -43,10 +40,11 @@ export class NgxPlayDirective {
         });
     });
     private toggle$ = effect(() => {
-        const paused = this.paused();
+        const isPaused = this.paused();
+        if (this.player.isLoading()) return;
         const audio = this.player.audio();
-        if (audio?.currentSrc) paused ? audio.pause() : audio.play().catch(() => {});
+        if (audio && audio.readyState !== audio.HAVE_NOTHING) isPaused ? audio.pause() : audio.play().catch(() => {});
         const video = this.player.video();
-        if (video?.currentSrc) paused ? video.pause() : video.play().catch(() => {});
+        if (video && video.readyState !== video.HAVE_NOTHING) isPaused ? video.pause() : video.play().catch(() => {});
     });
 }

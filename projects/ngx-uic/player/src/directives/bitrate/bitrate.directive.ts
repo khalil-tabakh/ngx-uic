@@ -88,9 +88,7 @@ export class NgxBitrateDirective {
         });
         if (currentSources.find((currentSource) => currentSource.src === audio.currentSrc)) return;
         const currentTime = audio.currentTime || 0;
-        const paused = audio.paused;
         audio.load();
         audio.currentTime = currentTime;
-        if (audio.currentSrc && !paused) audio.play().catch(() => {});
     });
 }

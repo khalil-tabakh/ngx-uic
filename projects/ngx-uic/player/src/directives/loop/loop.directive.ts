@@ -31,9 +31,9 @@ export class NgxLoopDirective {
         if (!media || !this.loop()) return;
         const audio = this.player.audio();
         const audioEnded = audio?.ended || audio?.currentTime === audio?.duration;
-        if (audio?.currentSrc && audioEnded) audio.play().catch(() => {});
+        if (audio && audio.readyState !== audio.HAVE_NOTHING && audioEnded) audio.play().catch(() => {});
         const video = this.player.video();
         const videoEnded = video?.ended || video?.currentTime === video?.duration;
-        if (video?.currentSrc && videoEnded) video.play().catch(() => {});
+        if (video && video.readyState !== video.HAVE_NOTHING && videoEnded) video.play().catch(() => {});
     });
 }

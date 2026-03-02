@@ -74,9 +74,7 @@ export class NgxLanguageDirective {
         });
         if (currentSources.find((currentSource) => currentSource.src === media.currentSrc)) return;
         const currentTime = media.currentTime || 0;
-        const paused = media.paused;
         media.load();
         media.currentTime = currentTime;
-        if (media.currentSrc && !paused) media.play().catch(() => {});
     }
 }

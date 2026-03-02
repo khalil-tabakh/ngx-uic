@@ -86,9 +86,7 @@ export class NgxResolutionDirective {
         });
         if (currentSources.find((currentSource) => currentSource.src === video.currentSrc)) return;
         const currentTime = video.currentTime || 0;
-        const paused = video.paused;
         video.load();
         video.currentTime = currentTime;
-        if (video.currentSrc && !paused) video.play().catch(() => {});
     });
 }
