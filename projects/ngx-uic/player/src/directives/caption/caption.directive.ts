@@ -1,4 +1,4 @@
-import { Directive, computed, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, computed, effect, inject, input, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,6 +11,8 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxCaptionDirective {
     private player = inject(NgxPlayerComponent);
+
+    readonly offset = input(0);
 
     private tracks = computed(() => this.player.videoTracks().filter((track) => track.srclang));
 
@@ -34,6 +36,18 @@ export class NgxCaptionDirective {
         const onChange = () => this.captions.set(Array.from(video.textTracks).filter((subtitle) => subtitle.language));
         video.textTracks.addEventListener('change', onChange);
         onCleanup(() => video.textTracks.removeEventListener('change', onChange));
+    });
+    private shift$ = effect((onCleanup) => {
+        const cues = Array.from(this.caption()?.cues || []);
+        const offset = this.offset();
+        cues.forEach((cue) => {
+            cue.startTime += offset;
+            cue.endTime += offset;
+        });
+        onCleanup(() => cues.forEach((cue) => {
+            cue.startTime -= offset;
+            cue.endTime -= offset;
+        }));
     });
     private switch$ = effect(() => {
         const video = this.player.video();
