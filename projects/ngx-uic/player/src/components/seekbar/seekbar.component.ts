@@ -34,17 +34,11 @@ export class NgxSeekBarComponent {
     private buffered$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const onLoadstart = () => this.buffered.set([]);
-        media.addEventListener('loadstart', onLoadstart);
-        const onProgress = () => this.setBuffered();
-        media.addEventListener('progress', onProgress);
-        const onPlaying = () => this.setBuffered(); // Trigger after each pointerup event
-        media.addEventListener('playing', onPlaying);
-        onCleanup(() => {
-            media.removeEventListener('loadstart', onLoadstart);
-            media.removeEventListener('progress', onProgress);
-            media.removeEventListener('playing', onPlaying);
-        });
+        const controller = new AbortController();
+        media.addEventListener('loadstart', () => this.buffered.set([]), { signal: controller.signal });
+        media.addEventListener('progress', () => this.setBuffered(), { signal: controller.signal });
+        media.addEventListener('playing', () => this.setBuffered(), { signal: controller.signal }); // Trigger after each pointerup event
+        onCleanup(() => controller.abort());
     });
     private currentTime$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
@@ -112,18 +106,10 @@ export class NgxSeekBarComponent {
         this.buffered.set(buffered);
         // Because "progress" event doesn't reliably trigger at the media end or on media reload
         const closest = buffered.find(([_, end]) => end >= media.currentTime)?.at(1) || 0;
-        if (closest) {
-            // Force recheck every half remaining buffered time
+        if (closest) { // Force recheck every half remaining buffered time
             const timeout = Math.ceil((closest - media.currentTime) / 2) * 1000;
             if (timeout > 0 && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
-        } else {
-            // Force recheck the next time the media time update
-            const onTimeupdate = () => {
-                this.setBuffered();
-                media.removeEventListener('timeupdate', onTimeupdate);
-            }
-            media.addEventListener('timeupdate', onTimeupdate);
-        }
+        } else media.addEventListener('timeupdate', () => this.setBuffered(), { once: true }); // Force recheck on next media time update
     }
 
     protected onHovering(): void {
@@ -142,12 +128,10 @@ export class NgxSeekBarComponent {
             this.hovered.set(this.duration() * percentage / 100);
         };
         range.addEventListener('pointermove', onPointerMove);
-        const onPointerLeave = () => {
-            this.hovered.set(-1);
+        range.addEventListener('pointerleave', () => {
             range.removeEventListener('pointermove', onPointerMove);
-            range.removeEventListener('pointerleave', onPointerLeave);
-        };
-        range.addEventListener('pointerleave', onPointerLeave);
+            this.hovered.set(-1);
+        }, { once: true });
     }
 
     protected onSeek(value: number): void {
@@ -162,10 +146,8 @@ export class NgxSeekBarComponent {
         const range = this.rangeRef().nativeElement;
         const paused = media.paused;
         if (media.readyState !== media.HAVE_NOTHING) media.pause();
-        const onPointerup = () => {
+        range.addEventListener('pointerup', () => {
             if (media.readyState !== media.HAVE_NOTHING) paused ? media.pause() : media.play().catch(() => {});
-            range.removeEventListener('pointerup', onPointerup);
-        };
-        range.addEventListener('pointerup', onPointerup);
+        }, { once: true });
     }
 }

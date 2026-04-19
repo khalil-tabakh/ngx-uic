@@ -30,71 +30,48 @@ export class NgxPlayerComponent {
     readonly isPaused = this.paused.asReadonly();
 
     private audioSources$ = effect((onCleanup) => {
-        const offErrors = this.audioSources().map((source) => {
-            const onError = () => this.audioSources.update((sources) => this.deleteElement(sources, source));
-            source.addEventListener('error', onError);
-            return () => source.removeEventListener('error', onError);
-        });
-        onCleanup(() => offErrors.forEach((offError) => offError()));
+        const controller = new AbortController();
+        this.audioSources().forEach((source) => source.addEventListener('error', (event) => {
+            this.audioSources.update((sources) => this.deleteElement(sources, source));
+        }, { signal: controller.signal }));
+        onCleanup(() => controller.abort());
     });
     private videoSources$ = effect((onCleanup) => {
-        const offErrors = this.videoSources().map((source) => {
-            const onError = () => this.videoSources.update((sources) => this.deleteElement(sources, source));
-            source.addEventListener('error', onError);
-            return () => source.removeEventListener('error', onError);
-        });
-        onCleanup(() => offErrors.forEach((offError) => offError()));
+        const controller = new AbortController();
+        this.videoSources().forEach((source) => source.addEventListener('error', (event) => {
+            this.videoSources.update((sources) => this.deleteElement(sources, source));
+        }, { signal: controller.signal }));
+        onCleanup(() => controller.abort());
     });
     private videoTracks$ = effect((onCleanup) => {
-        const offErrors = this.videoTracks().map((track) => {
-            const onError = () => this.videoTracks.update((tracks) => this.deleteElement(tracks, track));
-            track.addEventListener('error', onError);
-            return () => track.removeEventListener('error', onError);
-        });
-        onCleanup(() => offErrors.forEach((offError) => offError()));
+        const controller = new AbortController();
+        this.videoTracks().forEach((track) => track.addEventListener('error', () => {
+            this.videoTracks.update((tracks) => this.deleteElement(tracks, track))
+        }, { signal: controller.signal }));
+        onCleanup(() => controller.abort());
     });
 
     private isLoading$ = effect((onCleanup) => {
         const audio = this.audio();
         const video = this.video();
-        const onAudioCanplay = () => this.audioLoading.set(false);
-        audio?.addEventListener('canplay', onAudioCanplay);
-        const onAudioEmptied = () => this.audioLoading.set(false);
-        audio?.addEventListener('emptied', onAudioEmptied);
-        const onAudioLoadstart = () => this.audioLoading.set(true);
-        audio?.addEventListener('loadstart', onAudioLoadstart);
-        const onAudioWaiting = () => this.audioLoading.set(audio?.readyState !== audio?.HAVE_NOTHING);
-        audio?.addEventListener('waiting', onAudioWaiting);
-        const onVideoCanplay = () => this.videoLoading.set(false);
-        video?.addEventListener('canplay', onVideoCanplay);
-        const onVideoEmptied = () => this.videoLoading.set(false);
-        video?.addEventListener('emptied', onVideoEmptied);
-        const onVideoLoadstart = () => this.videoLoading.set(true);
-        video?.addEventListener('loadstart', onVideoLoadstart);
-        const onVideoWaiting = () => this.videoLoading.set(video?.readyState !== video?.HAVE_NOTHING);
-        video?.addEventListener('waiting', onVideoWaiting);
-        onCleanup(() => {
-            audio?.removeEventListener('canplay', onAudioCanplay);
-            audio?.removeEventListener('emptied', onAudioEmptied);
-            audio?.removeEventListener('loadstart', onAudioLoadstart);
-            audio?.removeEventListener('waiting', onAudioWaiting);
-            video?.removeEventListener('canplay', onVideoCanplay);
-            video?.removeEventListener('emptied', onVideoEmptied);
-            video?.removeEventListener('loadstart', onVideoLoadstart);
-            video?.removeEventListener('waiting', onVideoWaiting);
-        });
+        const controller = new AbortController();
+        audio?.addEventListener('canplay', () => this.audioLoading.set(false), { signal: controller.signal });
+        audio?.addEventListener('emptied', () => this.audioLoading.set(false), { signal: controller.signal });
+        audio?.addEventListener('loadstart', () => this.audioLoading.set(true), { signal: controller.signal });
+        audio?.addEventListener('waiting', () => this.audioLoading.set(audio?.readyState !== audio?.HAVE_NOTHING), { signal: controller.signal });
+        video?.addEventListener('canplay', () => this.videoLoading.set(false), { signal: controller.signal });
+        video?.addEventListener('emptied', () => this.videoLoading.set(false), { signal: controller.signal });
+        video?.addEventListener('loadstart', () => this.videoLoading.set(true), { signal: controller.signal });
+        video?.addEventListener('waiting', () => this.videoLoading.set(video?.readyState !== video?.HAVE_NOTHING), { signal: controller.signal });
+        onCleanup(() => controller.abort());
     });
     private isPaused$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.video() || this.audio();
         if (!media) return;
-        const onPause = () => this.paused.set(!this.isLoading());
-        media.addEventListener('pause', onPause);
-        const onPlay = () => this.paused.set(false);
-        media.addEventListener('play', onPlay);
-        onCleanup(() => {
-            media.removeEventListener('pause', onPause);
-            media.removeEventListener('play', onPlay);
-        });
+        const controller = new AbortController();
+        media.addEventListener('pause', () => this.paused.set(!this.isLoading()), { signal: controller.signal });
+        media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
+        onCleanup(() => controller.abort());
     });
 
     private sync$ = afterRenderEffect({
