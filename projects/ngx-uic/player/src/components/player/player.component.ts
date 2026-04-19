@@ -21,6 +21,15 @@ export class NgxPlayerComponent {
     readonly videoSources = linkedSignal(() => Array.from(this.video()?.getElementsByTagName('source') || []));
     readonly videoTracks = linkedSignal(() => Array.from(this.video()?.getElementsByTagName('track') || []));
 
+    readonly audioSource = linkedSignal<HTMLSourceElement[], HTMLSourceElement | undefined>({
+        source: this.audioSources,
+        computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
+    });
+    readonly videoSource = linkedSignal<HTMLSourceElement[], HTMLSourceElement | undefined>({
+        source: this.videoSources,
+        computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
+    });
+
     private audioLoading = signal(false);
     private videoLoading = signal(false);
 
@@ -48,6 +57,37 @@ export class NgxPlayerComponent {
         this.videoTracks().forEach((track) => track.addEventListener('error', () => {
             this.videoTracks.update((tracks) => this.deleteElement(tracks, track))
         }, { signal: controller.signal }));
+        onCleanup(() => controller.abort());
+    });
+
+    private audioSource$ = effect((onCleanup) => {
+        const audio = this.audio();
+        if (!audio) return;
+        const controller = new AbortController();
+        const onEmptied = () => this.audioSource.set(undefined);
+        audio.addEventListener('loadstart', () => {
+            audio.removeEventListener('emptied', onEmptied);
+            const source = this.audioSources().find((source) => source.src === audio.currentSrc);
+            if (source) this.audioSource.set(source);
+        }, { signal: controller.signal });
+        audio.addEventListener('loadeddata', () => {
+            audio.addEventListener('emptied', onEmptied, { signal: controller.signal });
+        }, { signal: controller.signal });
+        onCleanup(() => controller.abort());
+    });
+    private videoSource$ = effect((onCleanup) => {
+        const video = this.video();
+        if (!video) return;
+        const controller = new AbortController();
+        const onEmptied = () => this.videoSource.set(undefined);
+        video.addEventListener('loadstart', () => {
+            video.removeEventListener('emptied', onEmptied);
+            const source = this.videoSources().find((source) => source.src === video.currentSrc);
+            if (source) this.videoSource.set(source);
+        }, { signal: controller.signal });
+        video.addEventListener('loadeddata', () => {
+            video.addEventListener('emptied', onEmptied, { signal: controller.signal })
+        }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
 

@@ -13,10 +13,16 @@ export class NgxBitrateDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
+    private language = linkedSignal({
+        source: () => ({ audioSource: this.player.audioSource(), videoSource: this.player.videoSource() }),
+        computation: (source, previous) => source.audioSource?.lang || source.videoSource?.lang || previous?.value
+    }).asReadonly();
+     
     private sources = resource({
         defaultValue: [],
-        params: this.player.audioSources,
-        loader: async ({ params: sources }) => {
+        params: () => ({ language: this.language(), sources: this.player.audioSources() }),
+        loader: async (request) => {
+            const { language, sources } = request.params;
             const promises = sources.map((source) => new Promise<HTMLSourceElement>((resolve, reject) => {
                 if (Number(source.dataset['bitrate'])) return resolve(source);
                 const audio = this.document.createElement('audio');
@@ -33,8 +39,10 @@ export class NgxBitrateDirective {
             }));
             const results = await Promise.allSettled(promises);
             return results.reduce((sources, result) => {
-                if (result.status === 'fulfilled') sources.push(result.value);
-                else result.reason.dispatchEvent(new Event('error'));
+                if (result.status === 'fulfilled') {
+                    const isSameLanguage = !language || language === result.value.lang;
+                    isSameLanguage ? sources.push(result.value) : result.value.remove();
+                } else result.reason.dispatchEvent(new Event('error'));
                 return sources;
             }, [] as HTMLSourceElement[]);
         }
