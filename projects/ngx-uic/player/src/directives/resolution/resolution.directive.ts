@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, effect, inject, linkedSignal, resource } from '@angular/core';
+import { DOCUMENT, Directive, computed, effect, inject, linkedSignal, resource } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -30,63 +30,57 @@ export class NgxResolutionDirective {
                 };
             }));
             const results = await Promise.allSettled(promises);
-            return results.filter((result) => result.status === 'fulfilled').map((result) => result.value).reverse();
+            return results.reduce((sources, result) => {
+                if (result.status === 'fulfilled') sources.push(result.value);
+                else result.reason.dispatchEvent(new Event('error'));
+                return sources;
+            }, [] as HTMLSourceElement[]);
         }
-    });
+    }).asReadonly();
 
-    readonly resolutions = linkedSignal(() => {
-        const video = this.player.video();
-        const sources = this.sources.value().reverse().filter((source) => source.lang === video?.lang || !video?.lang);
-        const resolutions = sources.map((source) => Number(source.dataset['resolution']));
+    readonly resolutions = computed(() => {
+        const sources = this.sources.value();
+        const resolutions = sources.map((source) => Number(source.dataset['resolution'] || ''));
         return new Set(resolutions).values().toArray();
     });
 
     readonly resolution = linkedSignal(() => {
         const video = this.player.video();
-        const source = this.sources.value().find((source) => source.src === video?.currentSrc);
-        const resolution = Number(source?.dataset['resolution'] || video?.dataset['resolution'] || '');
-        return this.resolutions().includes(resolution) ? resolution : 0;
+        const resolution = this.resolutions().find((resolution) => resolution === Number(video?.dataset['resolution']));
+        return resolution || this.resolutions().at(0) || 0;
     });
 
     private resolution$ = effect((onCleanup) => {
         const video = this.player.video();
         if (!video) return;
+        const mutation$ = new MutationObserver(() => this.resolution.set(Number(video?.dataset['resolution'] || '')));
+        mutation$.observe(video, { attributeFilter: ['data-resolution'] });
         const onLoadstart = () => {
             const source = this.sources.value().find((source) => source.src === video.currentSrc);
             this.resolution.set(Number(source?.dataset['resolution'] || ''));
         };
         video.addEventListener('loadstart', onLoadstart);
-        const mutation$ = new MutationObserver(() => this.resolution.set(Number(video.dataset['resolution'] || '')));
-        mutation$.observe(video, { attributeFilter: ['data-resolution'] });
         onCleanup(() => {
-            video.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
+            video.removeEventListener('loadstart', onLoadstart);
         });
-    });
-    private resolutions$ = effect((onCleanup) => {
-        const video = this.player.video();
-        if (!video) return;
-        const mutation$ = new MutationObserver(() => {
-            const sources = this.sources.value().reverse().filter((source) => source.lang === video.lang || !video.lang);
-            const resolutions = sources.map((source) => Number(source.dataset['resolution']));
-            this.resolutions.set(new Set(resolutions).values().toArray());
-        });
-        mutation$.observe(video, { attributeFilter: ['lang'] });
-        onCleanup(() => mutation$.disconnect());
     });
     private switch$ = effect(() => {
-        const video = this.player.video();
-        if (!video) return;
+        if (this.sources.isLoading()) return;
         const resolution = this.resolution() ? String(this.resolution()) : '';
-        video.dataset['resolution'] = resolution;
-        const currentSources = this.sources.value().filter((source) => {
-            const isSameLanguage = source.lang === video.lang || !video.lang;
-            const isSameResolution = source.dataset['resolution'] === resolution || !resolution;
-            return isSameLanguage && isSameResolution ? !Boolean(video.prepend(source)) : Boolean(source.remove());
-        });
-        if (currentSources.find((currentSource) => currentSource.src === video.currentSrc)) return;
-        const currentTime = video.currentTime || 0;
-        video.load();
-        video.currentTime = currentTime;
+        const video = this.player.video();
+        if (video) this.reload(resolution, video, this.sources.value());
     });
+
+    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[]): void {
+        media.dataset['resolution'] = resolution;
+        const currentSources = sources.toReversed().filter((source) => {
+            const isSameResolution = !resolution || source.dataset['resolution']!.split(',').includes(resolution);
+            return isSameResolution ? !Boolean(media.prepend(source)) : Boolean(source.remove());
+        });
+        if (currentSources.find((currentSource) => currentSource.src === media.currentSrc)) return;
+        const currentTime = media.currentTime || 0;
+        media.load();
+        media.currentTime = currentTime;
+    }
 }

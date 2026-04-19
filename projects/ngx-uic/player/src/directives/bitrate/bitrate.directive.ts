@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, effect, inject, linkedSignal, resource } from '@angular/core';
+import { DOCUMENT, Directive, computed, effect, inject, linkedSignal, resource } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -32,63 +32,57 @@ export class NgxBitrateDirective {
                 });
             }));
             const results = await Promise.allSettled(promises);
-            return results.filter((result) => result.status === 'fulfilled').map((result) => result.value).reverse();
+            return results.reduce((sources, result) => {
+                if (result.status === 'fulfilled') sources.push(result.value);
+                else result.reason.dispatchEvent(new Event('error'));
+                return sources;
+            }, [] as HTMLSourceElement[]);
         }
-    });
+    }).asReadonly();
 
-    readonly bitrates = linkedSignal(() => {
-        const audio = this.player.audio();
-        const sources = this.sources.value().reverse().filter((source) => source.lang === audio?.lang || !audio?.lang);
-        const bitrates = sources.map((source) => Number(source.dataset['bitrate']));
+    readonly bitrates = computed(() => {
+        const sources = this.sources.value();
+        const bitrates = sources.map((source) => Number(source.dataset['bitrate'] || ''));
         return new Set(bitrates).values().toArray();
     });
 
     readonly bitrate = linkedSignal(() => {
         const audio = this.player.audio();
-        const source = this.sources.value().find((source) => source.src === audio?.currentSrc);
-        const bitrate = Number(source?.dataset['bitrate'] || audio?.dataset['bitrate'] || '');
-        return this.bitrates().includes(bitrate) ? bitrate : 0;
+        const bitrate = this.bitrates().find((bitrate) => bitrate === Number(audio?.dataset['bitrate']));
+        return bitrate || this.bitrates().at(0) || 0;
     });
 
     private bitrate$ = effect((onCleanup) => {
         const audio = this.player.audio();
         if (!audio) return;
+        const mutation$ = new MutationObserver(() => this.bitrate.set(Number(audio.dataset['bitrate'] || '')));
+        mutation$.observe(audio, { attributeFilter: ['data-bitrate'] });
         const onLoadstart = () => {
             const source = this.sources.value().find((source) => source.src === audio.currentSrc);
             this.bitrate.set(Number(source?.dataset['bitrate'] || ''));
         };
         audio.addEventListener('loadstart', onLoadstart);
-        const mutation$ = new MutationObserver(() => this.bitrate.set(Number(audio.dataset['bitrate'] || '')));
-        mutation$.observe(audio, { attributeFilter: ['data-bitrate'] });
         onCleanup(() => {
-            audio.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
+            audio.removeEventListener('loadstart', onLoadstart);
         });
-    });
-    private bitrates$ = effect((onCleanup) => {
-        const audio = this.player.audio();
-        if (!audio) return;
-        const mutation$ = new MutationObserver(() => {
-            const sources = this.sources.value().reverse().filter((source) => source.lang === audio.lang || !audio.lang);
-            const bitrates = sources.map((source) => Number(source.dataset['bitrate']));
-            this.bitrates.set(new Set(bitrates).values().toArray());
-        });
-        mutation$.observe(audio, { attributeFilter: ['lang'] });
-        onCleanup(() => mutation$.disconnect());
     });
     private switch$ = effect(() => {
-        const audio = this.player.audio();
-        if (!audio) return;
+        if (this.sources.isLoading()) return;
         const bitrate = this.bitrate() ? String(this.bitrate()) : '';
-        audio.dataset['bitrate'] = bitrate;
-        const currentSources = this.sources.value().filter((source) => {
-            const isSameLanguage = source.lang === audio.lang || !audio.lang;
-            const isSameBitrate = source.dataset['bitrate'] === bitrate || !bitrate;
-            return isSameLanguage && isSameBitrate ? !Boolean(audio.prepend(source)) : Boolean(source.remove());
-        });
-        if (currentSources.find((currentSource) => currentSource.src === audio.currentSrc)) return;
-        const currentTime = audio.currentTime || 0;
-        audio.load();
-        audio.currentTime = currentTime;
+        const audio = this.player.audio();
+        if (audio) this.reload(bitrate, audio, this.sources.value());
     });
+
+    private reload(bitrate: string, media: HTMLMediaElement, sources: HTMLSourceElement[]): void {
+        media.dataset['bitrate'] = bitrate;
+        const currentSources = sources.toReversed().filter((source) => {
+            const isSameBitrate = !bitrate || source.dataset['bitrate']?.split(',').includes(bitrate);
+            return isSameBitrate ? !Boolean(media.prepend(source)) : Boolean(source.remove());
+        });
+        if (currentSources.find((currentSource) => currentSource.src === media.currentSrc)) return;
+        const currentTime = media.currentTime || 0;
+        media.load();
+        media.currentTime = currentTime;
+    }
 }
