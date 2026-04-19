@@ -1,4 +1,4 @@
-import { Component, ElementRef, Renderer2, RendererStyleFlags2, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { NgxPlayerComponent } from '../player/player.component';
 import { NgxRangeComponent, between } from '../../../../range/public-api';
 
@@ -16,7 +16,6 @@ import { NgxRangeComponent, between } from '../../../../range/public-api';
 })
 export class NgxSeekBarComponent {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     readonly marks = input<number[]>([]);
     readonly splits = input<number[]>([]);
@@ -35,26 +34,31 @@ export class NgxSeekBarComponent {
     private buffered$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenLoadstart = this.renderer.listen(media, 'loadstart', () => this.buffered.set([]));
-        const unlistenProgress = this.renderer.listen(media, 'progress', () => this.setBuffered());
-        const unlistenPlaying = this.renderer.listen(media, 'playing', () => this.setBuffered()); // Trigger after each pointerup event
+        const onLoadstart = () => this.buffered.set([]);
+        media.addEventListener('loadstart', onLoadstart);
+        const onProgress = () => this.setBuffered();
+        media.addEventListener('progress', onProgress);
+        const onPlaying = () => this.setBuffered(); // Trigger after each pointerup event
+        media.addEventListener('playing', onPlaying);
         onCleanup(() => {
-            unlistenLoadstart();
-            unlistenProgress();
-            unlistenPlaying();
+            media.removeEventListener('loadstart', onLoadstart);
+            media.removeEventListener('progress', onProgress);
+            media.removeEventListener('playing', onPlaying);
         });
     });
     private currentTime$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenTimeupdate = this.renderer.listen(media, 'timeupdate', () => this.currentTime.set(media.currentTime));
-        onCleanup(() => unlistenTimeupdate());
+        const onTimeupdate = () => this.currentTime.set(media.currentTime);
+        media.addEventListener('timeupdate', onTimeupdate);
+        onCleanup(() => media.removeEventListener('timeupdate', onTimeupdate));
     });
     private duration$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenDurationchange = this.renderer.listen(media, 'durationchange', () => this.duration.set(media.duration));
-        onCleanup(() => unlistenDurationchange());
+        const onDurationchange = () => this.duration.set(media.duration);
+        media.addEventListener('durationchange', onDurationchange);
+        onCleanup(() => media.removeEventListener('durationchange', onDurationchange));
     });
 
     private applyBuffered$ = afterRenderEffect({
@@ -78,7 +82,7 @@ export class NgxSeekBarComponent {
                     if (index % 2 !== 0) colors.push(`transparent ${percentage}%`);
                     return colors;
                 }, [] as string[]).join(', ');
-                this.renderer.setStyle(elementRefs[index].nativeElement, '--buffered', gradient, RendererStyleFlags2.DashCase);
+                elementRefs[index].nativeElement.style.setProperty('--buffered', String(gradient));
             });
         }
     });
@@ -91,11 +95,10 @@ export class NgxSeekBarComponent {
                 const segment = directive.segment();
                 const percentage = Math.min(Math.max((hovered - segment.start) / (segment.end - segment.start) * 100, 0), 100);
                 const element = elementRefs[index].nativeElement;
-                this.renderer.setStyle(element, '--hovered', percentage, RendererStyleFlags2.DashCase);
+                element.style.setProperty('--hovered', String(percentage));
                 const start = segment.start;
                 const end = directives.at(index + 1)?.segment().start ?? this.duration();
-                if (between(hovered, start, end)) this.renderer.addClass(element, 'segment--hovered');
-                else this.renderer.removeClass(element, 'segment--hovered');
+                element.classList.toggle('segment--hovered', between(hovered, start, end));
             });
         }
     });
@@ -115,10 +118,11 @@ export class NgxSeekBarComponent {
             if (timeout > 0 && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
         } else {
             // Force recheck the next time the media time update
-            const unlistenTimeupdate = this.renderer.listen(media, 'timeupdate', () => {
-                unlistenTimeupdate();
+            const onTimeupdate = () => {
                 this.setBuffered();
-            });
+                media.removeEventListener('timeupdate', onTimeupdate);
+            }
+            media.addEventListener('timeupdate', onTimeupdate);
         }
     }
 
@@ -130,18 +134,20 @@ export class NgxSeekBarComponent {
         const rangeLeft = range.getBoundingClientRect().left
         const rangeWidth = range.clientWidth - (rangePaddingLeft + rangePaddingRight);
 
-        const onPointerMove = this.renderer.listen(range, 'pointermove', (event: PointerEvent) => {
+        const onPointerMove = (event: PointerEvent) => {
             const offsetX = event.clientX - rangeLeft;
             let percentage = ((offsetX - rangePaddingLeft) / rangeWidth) * 100;
             if (percentage < 0) percentage = 0;
             if (percentage > 100) percentage = 100;
             this.hovered.set(this.duration() * percentage / 100);
-        });
-        const onPointerLeave = this.renderer.listen(range, 'pointerleave', () => {
+        };
+        range.addEventListener('pointermove', onPointerMove);
+        const onPointerLeave = () => {
             this.hovered.set(-1);
-            onPointerMove();
-            onPointerLeave();
-        });
+            range.removeEventListener('pointermove', onPointerMove);
+            range.removeEventListener('pointerleave', onPointerLeave);
+        };
+        range.addEventListener('pointerleave', onPointerLeave);
     }
 
     protected onSeek(value: number): void {
@@ -156,9 +162,10 @@ export class NgxSeekBarComponent {
         const range = this.rangeRef().nativeElement;
         const paused = media.paused;
         if (media.readyState !== media.HAVE_NOTHING) media.pause();
-        const unlistenPointerup = this.renderer.listen(range, 'pointerup', () => {
+        const onPointerup = () => {
             if (media.readyState !== media.HAVE_NOTHING) paused ? media.pause() : media.play().catch(() => {});
-            unlistenPointerup();
-        });
+            range.removeEventListener('pointerup', onPointerup);
+        };
+        range.addEventListener('pointerup', onPointerup);
     }
 }

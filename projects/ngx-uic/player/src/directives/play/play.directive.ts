@@ -1,4 +1,4 @@
-import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,7 +11,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxPlayDirective {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     readonly ended = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
@@ -22,21 +21,25 @@ export class NgxPlayDirective {
     private ended$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenCanplay = this.renderer.listen(media, 'canplay', () => this.ended.set(false));
-        const unlistenEnded = this.renderer.listen(media, 'ended', () => this.ended.set(true));
+        const onCanplay = () => this.ended.set(false);
+        media.addEventListener('canplay', onCanplay);
+        const onEnded = () => this.ended.set(true);
+        media.addEventListener('ended', onEnded);
         onCleanup(() => {
-            unlistenCanplay();
-            unlistenEnded();
+            media.removeEventListener('canplay', onCanplay);
+            media.removeEventListener('ended', onEnded);
         });
     });
     private paused$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenPause = this.renderer.listen(media, 'pause', () => this.paused.set(!this.player.isLoading()));
-        const unlistenPlaying = this.renderer.listen(media, 'play', () => this.paused.set(false));
+        const onPause = () => this.paused.set(!this.player.isLoading());
+        media.addEventListener('pause', onPause);
+        const onPlay = () => this.paused.set(false);
+        media.addEventListener('play', onPlay);
         onCleanup(() => {
-            unlistenPause();
-            unlistenPlaying();
+            media.removeEventListener('pause', onPause);
+            media.removeEventListener('play', onPlay);
         });
     });
     private toggle$ = effect(() => {

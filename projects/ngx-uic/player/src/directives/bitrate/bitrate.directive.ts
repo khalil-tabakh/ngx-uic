@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, Renderer2, effect, inject, linkedSignal, resource } from '@angular/core';
+import { DOCUMENT, Directive, effect, inject, linkedSignal, resource } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,7 +12,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxBitrateDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     private sources = resource({
         defaultValue: [],
@@ -54,14 +53,15 @@ export class NgxBitrateDirective {
     private bitrate$ = effect((onCleanup) => {
         const audio = this.player.audio();
         if (!audio) return;
-        const unlistenLoadstart = this.renderer.listen(audio, 'loadstart', () => {
+        const onLoadstart = () => {
             const source = this.sources.value().find((source) => source.src === audio.currentSrc);
             this.bitrate.set(Number(source?.dataset['bitrate'] || ''));
-        });
+        };
+        audio.addEventListener('loadstart', onLoadstart);
         const mutation$ = new MutationObserver(() => this.bitrate.set(Number(audio.dataset['bitrate'] || '')));
         mutation$.observe(audio, { attributeFilter: ['data-bitrate'] });
         onCleanup(() => {
-            unlistenLoadstart();
+            audio.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
         });
     });

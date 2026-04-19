@@ -1,4 +1,4 @@
-import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,7 +11,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxSpeedDirective {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     readonly speed = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
@@ -25,7 +24,8 @@ export class NgxSpeedDirective {
     private speed$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenRatechange = this.renderer.listen(media, 'ratechange', () => this.speed.set(media.playbackRate));
-        onCleanup(() => unlistenRatechange());
+        const onRatechange = () => this.speed.set(media.playbackRate);
+        media.addEventListener('ratechange', onRatechange);
+        onCleanup(() => media.removeEventListener('ratechange', onRatechange));
     });
 }

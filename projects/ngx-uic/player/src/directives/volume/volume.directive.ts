@@ -1,4 +1,4 @@
-import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,7 +11,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxVolumeDirective {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     readonly volume = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
@@ -33,7 +32,8 @@ export class NgxVolumeDirective {
     private volume$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const unlistenVolumechange = this.renderer.listen(media, 'volumechange', () => this.volume.set(media.muted ? 0 : media.volume));
-        onCleanup(() => unlistenVolumechange());
+        const onVolumechange = () => this.volume.set(media.muted ? 0 : media.volume);
+        media.addEventListener('volumechange', onVolumechange);
+        onCleanup(() => media.removeEventListener('volumechange', onVolumechange));
     });
 }

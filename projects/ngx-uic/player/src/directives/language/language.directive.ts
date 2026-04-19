@@ -1,4 +1,4 @@
-import { Directive, Renderer2, computed, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, computed, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,7 +11,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxLanguageDirective {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     private audioSources = computed(() => this.player.audioSources().filter((source) => source.lang).reverse());
     private videoSources = computed(() => this.player.videoSources().filter((source) => source.lang).reverse());
@@ -32,28 +31,30 @@ export class NgxLanguageDirective {
     private audioLanguage$ = effect((onCleanup) => {
         const audio = this.player.audio();
         if (!audio) return;
-        const unlistenLoadstart = this.renderer.listen(audio, 'loadstart', () => {
+        const onLoadstart = () => {
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
             this.audioLanguage.set(source?.lang || '');
-        });
+        };
+        audio.addEventListener('loadstart', onLoadstart);
         const mutation$ = new MutationObserver(() => this.audioLanguage.set(audio.lang));
         mutation$.observe(audio, { attributeFilter: ['lang'] });
         onCleanup(() => {
-            unlistenLoadstart();
+            audio.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
         });
     });
     private videoLanguage$ = effect((onCleanup) => {
         const video = this.player.video();
         if (!video) return;
-        const unlistenLoadstart = this.renderer.listen(video, 'loadstart', () => {
+        const onLoadstart = () => {
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
             this.videoLanguage.set(source?.lang || '');
-        });
+        };
+        video.addEventListener('loadstart', onloadstart);
         const mutation$ = new MutationObserver(() => this.videoLanguage.set(video.lang));
         mutation$.observe(video, { attributeFilter: ['lang'] });
         onCleanup(() => {
-            unlistenLoadstart();
+            video.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
         });
     });

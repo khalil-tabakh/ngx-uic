@@ -1,4 +1,4 @@
-import { Component, DOCUMENT, ElementRef, Renderer2, afterNextRender, effect, inject, linkedSignal, model } from '@angular/core';
+import { Component, DOCUMENT, ElementRef, afterNextRender, effect, inject, linkedSignal, model } from '@angular/core';
 
 @Component({
     selector: 'ngx-player',
@@ -13,7 +13,6 @@ import { Component, DOCUMENT, ElementRef, Renderer2, afterNextRender, effect, in
 export class NgxPlayerComponent {
     private document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    private renderer = inject(Renderer2);
 
     readonly audio = model<HTMLAudioElement>();
     readonly video = model<HTMLVideoElement>();
@@ -31,31 +30,28 @@ export class NgxPlayerComponent {
     readonly isPaused = this.paused.asReadonly();
 
     private audioSources$ = effect((onCleanup) => {
-        const unlistenErrors = this.audioSources().map((oldSource) => {
-            return this.renderer.listen(oldSource, 'error', () => {
-                oldSource.remove();
-                this.audioSources.update((audioSources) => audioSources.filter((newSource) => newSource !== oldSource));
-            });
+        const offErrors = this.audioSources().map((source) => {
+            const onError = () => this.audioSources.update((sources) => this.deleteElement(sources, source));
+            source.addEventListener('error', onError);
+            return () => source.removeEventListener('error', onError);
         });
-        onCleanup(() => unlistenErrors.forEach((unlistenError) => unlistenError()));
+        onCleanup(() => offErrors.forEach((offError) => offError()));
     });
     private videoSources$ = effect((onCleanup) => {
-        const unlistenErrors = this.videoSources().map((oldSource) => {
-            return this.renderer.listen(oldSource, 'error', () => {
-                oldSource.remove();
-                this.videoSources.update((videoSources) => videoSources.filter((newSource) => newSource !== oldSource));
-            });
+        const offErrors = this.videoSources().map((source) => {
+            const onError = () => this.videoSources.update((sources) => this.deleteElement(sources, source));
+            source.addEventListener('error', onError);
+            return () => source.removeEventListener('error', onError);
         });
-        onCleanup(() => unlistenErrors.forEach((unlistenError) => unlistenError()));
+        onCleanup(() => offErrors.forEach((offError) => offError()));
     });
     private videoTracks$ = effect((onCleanup) => {
-        const unlistenErrors = this.videoTracks().map((oldTrack) => {
-            return this.renderer.listen(oldTrack, 'error', () => {
-                oldTrack.remove();
-                this.videoTracks.update((videoTracks) => videoTracks.filter((newTrack) => newTrack !== oldTrack));
-            });
+        const offErrors = this.videoTracks().map((track) => {
+            const onError = () => this.videoTracks.update((tracks) => this.deleteElement(tracks, track));
+            track.addEventListener('error', onError);
+            return () => track.removeEventListener('error', onError);
         });
-        onCleanup(() => unlistenErrors.forEach((unlistenError) => unlistenError()));
+        onCleanup(() => offErrors.forEach((offError) => offError()));
     });
 
     private isLoading$ = effect((onCleanup) => {
@@ -123,6 +119,11 @@ export class NgxPlayerComponent {
             }
         }
     });
+
+    private deleteElement<T extends HTMLElement>(sources: T[], source: T): T[] {
+        source.remove();
+        return sources.filter((s) => s !== source);
+    }
 
     protected onTogglePlay(): void {
         this.paused.update((paused) => !paused);

@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, Renderer2, effect, inject, linkedSignal, resource } from '@angular/core';
+import { DOCUMENT, Directive, effect, inject, linkedSignal, resource } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,7 +12,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxResolutionDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     private sources = resource({
         defaultValue: [],
@@ -52,14 +51,15 @@ export class NgxResolutionDirective {
     private resolution$ = effect((onCleanup) => {
         const video = this.player.video();
         if (!video) return;
-        const unlistenLoadstart = this.renderer.listen(video, 'loadstart', () => {
+        const onLoadstart = () => {
             const source = this.sources.value().find((source) => source.src === video.currentSrc);
             this.resolution.set(Number(source?.dataset['resolution'] || ''));
-        });
+        };
+        video.addEventListener('loadstart', onLoadstart);
         const mutation$ = new MutationObserver(() => this.resolution.set(Number(video.dataset['resolution'] || '')));
         mutation$.observe(video, { attributeFilter: ['data-resolution'] });
         onCleanup(() => {
-            unlistenLoadstart();
+            video.removeEventListener('loadstart', onLoadstart);
             mutation$.disconnect();
         });
     });

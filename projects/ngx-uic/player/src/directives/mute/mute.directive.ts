@@ -1,4 +1,4 @@
-import { Directive, Renderer2, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -11,7 +11,6 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 })
 export class NgxMuteDirective {
     private player = inject(NgxPlayerComponent);
-    private renderer = inject(Renderer2);
 
     readonly muted = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
@@ -23,10 +22,11 @@ export class NgxMuteDirective {
         if (!media) return;
         const mutation$ = new MutationObserver(() => this.muted.set(media.muted));
         mutation$.observe(media, { attributeFilter: ['muted'] });
-        const unlistenVolumechange = this.renderer.listen(media, 'volumechange', () => this.muted.set(media.muted));
+        const onVolumechange = () => this.muted.set(media.muted);
+        media.addEventListener('volumechange', onVolumechange);
         onCleanup(() => {
             mutation$.disconnect();
-            unlistenVolumechange();
+            media.removeEventListener('volumechange', onVolumechange);
         });
     });
     private toggle$ = effect(() => {
