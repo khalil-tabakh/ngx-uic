@@ -21,10 +21,14 @@ export class NgxLanguageDirective {
         return new Set(languages).values().toArray();
     });
 
-    readonly language = linkedSignal(() => {
-        const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
-        const language = this.languages().find((language) => language === media?.lang);
-        return language || this.languages().at(0) || '';
+    readonly language = linkedSignal<string[], string>({
+        source: this.languages,
+        computation: (languages, previous) => {
+            const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
+            const newLanguage = languages.find((language) => language === media?.lang);
+            const oldLanguage = languages.find((language) => language === previous?.value);
+            return newLanguage || oldLanguage || languages.at(0) || '';
+        }
     });
 
     private language$ = effect((onCleanup) => {
@@ -45,9 +49,8 @@ export class NgxLanguageDirective {
     private switch$ = effect(() => {
         const audioLanguage = this.language();
         const audio = this.player.audio();
-        if (audio) this.reload(audioLanguage, audio, this.audioSources());
-        const sources = Array.from(audio?.getElementsByTagName('source') || []);
-        const videoLanguage = !sources.find((source) => source.lang === audioLanguage) ? audioLanguage : '';
+        if (audio) this.reload(audioLanguage, audio, this.audioSources(), untracked(this.player.audioSource));
+        const videoLanguage = !audio?.getElementsByTagName('source').length ? audioLanguage : '';
         const video = this.player.video();
         if (video) this.reload(videoLanguage, video, this.videoSources());
     });

@@ -48,16 +48,23 @@ export class NgxBitrateDirective {
         }
     }).asReadonly();
 
-    readonly bitrates = computed(() => {
-        const sources = this.sources.value();
-        const bitrates = sources.map((source) => Number(source.dataset['bitrate'] || ''));
-        return new Set(bitrates).values().toArray();
-    });
+    readonly bitrates = linkedSignal<HTMLSourceElement[], number[]>({
+        source: () => this.audioSources.value(),
+        computation: (sources, previous) => {
+            if (this.audioSources.isLoading()) return previous?.value || [];
+            const bitrates = sources.flatMap((source) => source.dataset['bitrate']?.split(',').map(Number) || []);
+            return new Set(bitrates).values().toArray();
+        }
+    }).asReadonly();
 
-    readonly bitrate = linkedSignal(() => {
-        const audio = this.player.audio();
-        const bitrate = this.bitrates().find((bitrate) => bitrate === Number(audio?.dataset['bitrate']));
-        return bitrate || this.bitrates().at(0) || 0;
+    readonly bitrate = linkedSignal<number[], number>({
+        source: this.bitrates,
+        computation: (bitrates, previous) => {
+            const media = this.media();
+            const newBitrate = bitrates.find((bitrate) => bitrate === Number(media?.dataset['bitrate']));
+            const oldBitrate = bitrates.find((bitrate) => bitrate === previous?.value);
+            return newBitrate || oldBitrate || bitrates.at(0) || 0;
+        }
     });
 
     private bitrate$ = effect((onCleanup) => {

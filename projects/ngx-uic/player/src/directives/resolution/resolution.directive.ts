@@ -46,16 +46,23 @@ export class NgxResolutionDirective {
         }
     }).asReadonly();
 
-    readonly resolutions = computed(() => {
-        const sources = this.sources.value();
-        const resolutions = sources.map((source) => Number(source.dataset['resolution'] || ''));
-        return new Set(resolutions).values().toArray();
-    });
+    readonly resolutions = linkedSignal<HTMLSourceElement[], number[]>({
+        source: this.sources.value,
+        computation: (sources, previous) => {
+            if (this.sources.isLoading()) return previous?.value || [];
+            const resolutions = sources.flatMap((source) => source.dataset['resolution']?.split(',').map(Number) || []);
+            return new Set(resolutions).values().toArray();
+        }
+    }).asReadonly();
 
-    readonly resolution = linkedSignal(() => {
-        const video = this.player.video();
-        const resolution = this.resolutions().find((resolution) => resolution === Number(video?.dataset['resolution']));
-        return resolution || this.resolutions().at(0) || 0;
+    readonly resolution = linkedSignal<number[], number>({
+        source: this.resolutions,
+        computation: (resolutions, previous) => {
+            const video = this.player.video();
+            const newResolution = resolutions.find((resolution) => resolution === Number(video?.dataset['resolution']));
+            const oldResolution = resolutions.find((resolution) => resolution === previous?.value);
+            return newResolution || oldResolution || resolutions.at(0) || 0;
+        }
     });
 
     private resolution$ = effect((onCleanup) => {
