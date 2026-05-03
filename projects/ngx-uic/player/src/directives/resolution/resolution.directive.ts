@@ -13,10 +13,7 @@ export class NgxResolutionDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
-    private language = linkedSignal({
-        source: () => ({ audioSource: this.player.audioSource(), videoSource: this.player.videoSource() }),
-        computation: (source, previous) => source.audioSource?.lang || source.videoSource?.lang || previous?.value
-    }).asReadonly();
+    private language = computed(() => !this.player.audioSource() ? this.player.videoSource()?.lang || this.player.video()?.lang : undefined);
 
     private sources = resource({
         defaultValue: [],

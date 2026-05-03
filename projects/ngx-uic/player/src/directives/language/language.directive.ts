@@ -49,7 +49,7 @@ export class NgxLanguageDirective {
     private switch$ = effect(() => {
         const audioLanguage = this.language();
         const audio = this.player.audio();
-        if (audio) this.reload(audioLanguage, audio, this.audioSources(), untracked(this.player.audioSource));
+        if (audio) this.reload(audioLanguage, audio, this.audioSources());
         const videoLanguage = !audio?.getElementsByTagName('source').length ? audioLanguage : '';
         const video = this.player.video();
         if (video) this.reload(videoLanguage, video, this.videoSources());

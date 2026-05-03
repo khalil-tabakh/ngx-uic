@@ -145,9 +145,9 @@ export class NgxSeekBarComponent {
         if (!media) return;
         const range = this.rangeRef().nativeElement;
         const paused = media.paused;
-        if (media.readyState !== media.HAVE_NOTHING) media.pause();
+        if (!!media.networkState) media.pause();
         range.addEventListener('pointerup', () => {
-            if (media.readyState !== media.HAVE_NOTHING) paused ? media.pause() : media.play().catch(() => {});
+            if (!!media.networkState) paused ? media.pause() : media.play().catch(() => {});
         }, { once: true });
     }
 }

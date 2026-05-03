@@ -38,8 +38,8 @@ export class NgxPlayDirective {
         const isPaused = this.paused();
         if (this.player.isLoading()) return;
         const audio = this.player.audio();
-        if (audio && audio.readyState !== audio.HAVE_NOTHING) isPaused ? audio.pause() : audio.play().catch(() => {});
+        if (!!audio?.networkState) isPaused ? audio.pause() : audio.play().catch(() => {});
         const video = this.player.video();
-        if (video && video.readyState !== video.HAVE_NOTHING) isPaused ? video.pause() : video.play().catch(() => {});
+        if (!!video?.networkState) isPaused ? video.pause() : video.play().catch(() => {});
     });
 }

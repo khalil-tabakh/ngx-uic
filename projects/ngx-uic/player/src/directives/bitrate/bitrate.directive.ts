@@ -13,10 +13,7 @@ export class NgxBitrateDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
-    private language = linkedSignal({
-        source: () => ({ audioSource: this.player.audioSource(), videoSource: this.player.videoSource() }),
-        computation: (source, previous) => source.audioSource?.lang || source.videoSource?.lang || previous?.value
-    }).asReadonly();
+    private language = computed(() => this.player.audioSource()?.lang || this.player.audio()?.lang);
      
     private sources = resource({
         defaultValue: [],
@@ -49,9 +46,9 @@ export class NgxBitrateDirective {
     }).asReadonly();
 
     readonly bitrates = linkedSignal<HTMLSourceElement[], number[]>({
-        source: () => this.audioSources.value(),
+        source: () => this.sources.value(),
         computation: (sources, previous) => {
-            if (this.audioSources.isLoading()) return previous?.value || [];
+            if (this.sources.isLoading()) return previous?.value || [];
             const bitrates = sources.flatMap((source) => source.dataset['bitrate']?.split(',').map(Number) || []);
             return new Set(bitrates).values().toArray();
         }
@@ -60,8 +57,8 @@ export class NgxBitrateDirective {
     readonly bitrate = linkedSignal<number[], number>({
         source: this.bitrates,
         computation: (bitrates, previous) => {
-            const media = this.media();
-            const newBitrate = bitrates.find((bitrate) => bitrate === Number(media?.dataset['bitrate']));
+            const audio = this.player.audio();
+            const newBitrate = bitrates.find((bitrate) => bitrate === Number(audio?.dataset['bitrate']));
             const oldBitrate = bitrates.find((bitrate) => bitrate === previous?.value);
             return newBitrate || oldBitrate || bitrates.at(0) || 0;
         }

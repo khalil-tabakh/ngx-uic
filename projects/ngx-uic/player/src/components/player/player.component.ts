@@ -1,4 +1,4 @@
-import { Component, DOCUMENT, ElementRef, afterNextRender, effect, inject, linkedSignal, model } from '@angular/core';
+import { Component, DOCUMENT, ElementRef, afterRenderEffect, computed, effect, inject, linkedSignal, model, signal, untracked } from '@angular/core';
 
 @Component({
     selector: 'ngx-player',
@@ -64,14 +64,10 @@ export class NgxPlayerComponent {
         const audio = this.audio();
         if (!audio) return;
         const controller = new AbortController();
-        const onEmptied = () => this.audioSource.set(undefined);
+        audio.addEventListener('emptied', () => !audio.networkState && this.audioSource.set(undefined), { signal: controller.signal });
         audio.addEventListener('loadstart', () => {
-            audio.removeEventListener('emptied', onEmptied);
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
             if (source) this.audioSource.set(source);
-        }, { signal: controller.signal });
-        audio.addEventListener('loadeddata', () => {
-            audio.addEventListener('emptied', onEmptied, { signal: controller.signal });
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -79,14 +75,10 @@ export class NgxPlayerComponent {
         const video = this.video();
         if (!video) return;
         const controller = new AbortController();
-        const onEmptied = () => this.videoSource.set(undefined);
+        video.addEventListener('emptied', () => !video.networkState && this.videoSource.set(undefined), { signal: controller.signal });
         video.addEventListener('loadstart', () => {
-            video.removeEventListener('emptied', onEmptied);
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
             if (source) this.videoSource.set(source);
-        }, { signal: controller.signal });
-        video.addEventListener('loadeddata', () => {
-            video.addEventListener('emptied', onEmptied, { signal: controller.signal })
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -98,11 +90,11 @@ export class NgxPlayerComponent {
         audio?.addEventListener('canplay', () => this.audioLoading.set(false), { signal: controller.signal });
         audio?.addEventListener('emptied', () => this.audioLoading.set(false), { signal: controller.signal });
         audio?.addEventListener('loadstart', () => this.audioLoading.set(true), { signal: controller.signal });
-        audio?.addEventListener('waiting', () => this.audioLoading.set(audio?.readyState !== audio?.HAVE_NOTHING), { signal: controller.signal });
+        audio?.addEventListener('waiting', () => this.audioLoading.set(!!audio?.networkState), { signal: controller.signal });
         video?.addEventListener('canplay', () => this.videoLoading.set(false), { signal: controller.signal });
         video?.addEventListener('emptied', () => this.videoLoading.set(false), { signal: controller.signal });
         video?.addEventListener('loadstart', () => this.videoLoading.set(true), { signal: controller.signal });
-        video?.addEventListener('waiting', () => this.videoLoading.set(video?.readyState !== video?.HAVE_NOTHING), { signal: controller.signal });
+        video?.addEventListener('waiting', () => this.videoLoading.set(!!video?.networkState), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
     private isPaused$ = effect((onCleanup) => {
@@ -124,14 +116,14 @@ export class NgxPlayerComponent {
             const video = this.video();
             if (!audio || !video) return;
             if (this.isLoading()) {
-                if (audio.readyState !== audio.HAVE_NOTHING) audio.pause();
-                if (video.readyState !== video.HAVE_NOTHING) video.pause();
+                if (!!audio.networkState) audio.pause();
+                if (!!video.networkState) video.pause();
             } else if (!untracked(this.isPaused)) {
                 const drift = Math.abs(audio.currentTime - video.currentTime);
                 if (drift > 0.1) audio.currentTime = video.currentTime;
-                const audioPlayable = audio.readyState !== audio.HAVE_NOTHING;
+                const audioPlayable = !!audio.networkState;
                 if (audioPlayable) audio.play().catch(() => {});
-                const videoPlayable = video.readyState !== video.HAVE_NOTHING && (!audio.paused || !audioPlayable);
+                const videoPlayable = !!video.networkState && (!audio.paused || !audioPlayable);
                 if (videoPlayable) video.play().catch(() => {});
             }
         }
@@ -146,9 +138,9 @@ export class NgxPlayerComponent {
         this.paused.update((paused) => !paused);
         if (this.isLoading()) return;
         const audio = this.audio();
-        if (audio && audio.readyState !== audio.HAVE_NOTHING) this.isPaused() ? audio.pause() : audio.play().catch(() => {});
+        if (!!audio?.networkState) this.isPaused() ? audio.pause() : audio.play().catch(() => {});
         const video = this.video();
-        if (video && video.readyState !== video.HAVE_NOTHING) this.isPaused() ? video.pause() : video.play().catch(() => {});
+        if (!!video?.networkState) this.isPaused() ? video.pause() : video.play().catch(() => {});
     }
 
     protected onToggleFullscreen(): void {
