@@ -35,21 +35,21 @@ export class NgxPlayerComponent {
     private audioSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.audioSources().forEach((source) => source.addEventListener('error', (event) => {
-            this.audioSources.update((sources) => this.deleteElement(sources, source));
+            if (navigator.onLine) this.audioSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
     });
     private videoSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.videoSources().forEach((source) => source.addEventListener('error', (event) => {
-            this.videoSources.update((sources) => this.deleteElement(sources, source));
+            if (navigator.onLine) this.videoSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
     });
     private videoTracks$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.videoTracks().forEach((track) => track.addEventListener('error', () => {
-            this.videoTracks.update((tracks) => this.deleteElement(tracks, track))
+            if (navigator.onLine) this.videoTracks.update((tracks) => this.deleteElement(tracks, track))
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
     });
