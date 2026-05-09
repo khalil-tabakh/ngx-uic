@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, ElementRef, afterRenderEffect, inject, signal } from '@angular/core';
+import { DOCUMENT, Directive, ElementRef, afterRenderEffect, inject, input, signal } from '@angular/core';
 
 @Directive({
     selector: '[ngxFullscreen]',
@@ -13,14 +13,17 @@ export class NgxFullscreenDirective {
     protected document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
+    readonly keys = input(['Escape']);
+
     readonly fullscreen = signal(false);
 
     private toggle$ = afterRenderEffect({
         earlyRead: (onCleanup) => {
-            const player = this.element.closest('ngx-player');
-            const onDblclick = () => this.fullscreen.set(!this.fullscreen());
-            player?.addEventListener('dblclick', onDblclick);
-            onCleanup(() => player?.removeEventListener('dblclick', onDblclick));
+            const player = this.element.closest<HTMLElement>('ngx-player');
+            const controller = new AbortController();
+            player?.addEventListener('dblclick', () => this.fullscreen.set(!this.fullscreen()), { signal: controller.signal });
+            player?.addEventListener('keyup', (event) => this.keys().includes(event.code) && this.fullscreen.set(false), { signal: controller.signal });
+            onCleanup(() => controller.abort());
             return player;
         },
         mixedReadWrite: (player) => {
