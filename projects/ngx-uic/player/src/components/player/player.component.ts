@@ -1,4 +1,4 @@
-import { Component, DOCUMENT, ElementRef, computed, contentChild, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal, untracked } from '@angular/core';
 
 @Component({
     selector: 'ngx-player',
@@ -6,14 +6,10 @@ import { Component, DOCUMENT, ElementRef, computed, contentChild, effect, inject
     templateUrl: './player.component.html',
     styleUrl: './player.component.scss',
     host: {
-        '(click)': 'onTogglePlay()',
-        '(dblclick)': 'onToggleFullscreen()'
+        '(click)': 'onTogglePlay()'
     }
 })
 export class NgxPlayerComponent {
-    private document = inject(DOCUMENT);
-    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-
     private audioRef = contentChild<HTMLAudioElement, ElementRef<HTMLAudioElement>>('audio', { read: ElementRef });
     private videoRef = contentChild<HTMLVideoElement, ElementRef<HTMLVideoElement>>('video', { read: ElementRef });
 
@@ -137,11 +133,5 @@ export class NgxPlayerComponent {
         if (!!audio?.networkState) this.isPaused() ? audio.pause() : audio.play().catch(() => {});
         const video = this.video();
         if (!!video?.networkState) this.isPaused() ? video.pause() : video.play().catch(() => {});
-    }
-
-    protected onToggleFullscreen(): void {
-        this.document.fullscreenElement
-            ? this.document.exitFullscreen()
-            : this.element.requestFullscreen();
     }
 }
