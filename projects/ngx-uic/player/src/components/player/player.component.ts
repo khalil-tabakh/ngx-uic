@@ -1,4 +1,4 @@
-import { Component, DOCUMENT, ElementRef, afterRenderEffect, computed, effect, inject, linkedSignal, model, signal, untracked } from '@angular/core';
+import { Component, DOCUMENT, ElementRef, computed, contentChild, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 
 @Component({
     selector: 'ngx-player',
@@ -14,8 +14,11 @@ export class NgxPlayerComponent {
     private document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-    readonly audio = model<HTMLAudioElement>();
-    readonly video = model<HTMLVideoElement>();
+    private audioRef = contentChild<HTMLAudioElement, ElementRef<HTMLAudioElement>>('audio', { read: ElementRef });
+    private videoRef = contentChild<HTMLVideoElement, ElementRef<HTMLVideoElement>>('video', { read: ElementRef });
+
+    readonly audio = computed(() => this.audioRef()?.nativeElement);
+    readonly video = computed(() => this.videoRef()?.nativeElement);
 
     readonly audioSources = linkedSignal(() => Array.from(this.audio()?.getElementsByTagName('source') || []));
     readonly videoSources = linkedSignal(() => Array.from(this.video()?.getElementsByTagName('source') || []));
@@ -105,27 +108,20 @@ export class NgxPlayerComponent {
         media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
-
-    private sync$ = afterRenderEffect({
-        earlyRead: () => {
-            if (!this.audio()) this.audio.set(this.element.getElementsByTagName('audio')[0]);
-            if (!this.video()) this.video.set(this.element.getElementsByTagName('video')[0]);
-        },
-        write: () => {
-            const audio = this.audio();
-            const video = this.video();
-            if (!audio || !video) return;
-            if (this.isLoading()) {
-                if (!!audio.networkState) audio.pause();
-                if (!!video.networkState) video.pause();
-            } else if (!untracked(this.isPaused)) {
-                const drift = Math.abs(audio.currentTime - video.currentTime);
-                if (drift > 0.1) audio.currentTime = video.currentTime;
-                const audioPlayable = !!audio.networkState;
-                if (audioPlayable) audio.play().catch(() => {});
-                const videoPlayable = !!video.networkState && (!audio.paused || !audioPlayable);
-                if (videoPlayable) video.play().catch(() => {});
-            }
+    private sync$ = effect(() => {
+        const audio = this.audio();
+        const video = this.video();
+        if (!audio || !video) return;
+        if (this.isLoading()) {
+            if (!!audio.networkState) audio.pause();
+            if (!!video.networkState) video.pause();
+        } else if (!untracked(this.isPaused)) {
+            const drift = Math.abs(audio.currentTime - video.currentTime);
+            if (drift > 0.1) audio.currentTime = video.currentTime;
+            const audioPlayable = !!audio.networkState;
+            if (audioPlayable) audio.play().catch(() => {});
+            const videoPlayable = !!video.networkState && (!audio.paused || !audioPlayable);
+            if (videoPlayable) video.play().catch(() => {});
         }
     });
 
