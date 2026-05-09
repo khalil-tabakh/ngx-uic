@@ -4,7 +4,8 @@ import { Component, ElementRef, computed, contentChild, effect, linkedSignal, si
     selector: 'ngx-player',
     imports: [],
     templateUrl: './player.component.html',
-    styleUrl: './player.component.scss'
+    styleUrl: './player.component.scss',
+    host: { 'tabindex': '0' }
 })
 export class NgxPlayerComponent {
     private audioRef = contentChild<HTMLAudioElement, ElementRef<HTMLAudioElement>>('audio', { read: ElementRef });

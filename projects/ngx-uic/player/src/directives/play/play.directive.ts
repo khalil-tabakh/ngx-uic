@@ -1,4 +1,4 @@
-import { Directive, ElementRef, afterRenderEffect, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, ElementRef, afterRenderEffect, effect, inject, input, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,6 +12,8 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxPlayDirective {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private player = inject(NgxPlayerComponent);
+
+    readonly keys = input(['Space']);
 
     readonly ended = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
@@ -38,10 +40,11 @@ export class NgxPlayDirective {
 
     private toggle$ = afterRenderEffect({
         earlyRead: (onCleanup) => {
-            const player = this.element.closest('ngx-player');
-            const onClick = () => this.paused.set(!this.paused());
-            player?.addEventListener('click', onClick);
-            onCleanup(() => player?.removeEventListener('click', onClick));
+            const player = this.element.closest<HTMLElement>('ngx-player');
+            const controller = new AbortController();
+            player?.addEventListener('click', () => this.paused.set(!this.paused()), { signal: controller.signal });
+            player?.addEventListener('keypress', (event) => this.keys().includes(event.code) && this.paused.set(!this.paused()), { signal: controller.signal });
+            onCleanup(() => controller.abort());
         },
         mixedReadWrite: () => {
             const audio = this.player.audio();
