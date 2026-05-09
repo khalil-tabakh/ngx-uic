@@ -1,13 +1,10 @@
-import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal, untracked } from '@angular/core';
+import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal } from '@angular/core';
 
 @Component({
     selector: 'ngx-player',
     imports: [],
     templateUrl: './player.component.html',
-    styleUrl: './player.component.scss',
-    host: {
-        '(click)': 'onTogglePlay()'
-    }
+    styleUrl: './player.component.scss'
 })
 export class NgxPlayerComponent {
     private audioRef = contentChild<HTMLAudioElement, ElementRef<HTMLAudioElement>>('audio', { read: ElementRef });
@@ -32,10 +29,7 @@ export class NgxPlayerComponent {
     private audioLoading = signal(false);
     private videoLoading = signal(false);
 
-    private paused = linkedSignal(() => this.video()?.paused ?? this.audio()?.paused ?? true);
-
     readonly isLoading = computed(() => this.audioLoading() || this.videoLoading());
-    readonly isPaused = this.paused.asReadonly();
 
     private audioSources$ = effect((onCleanup) => {
         const controller = new AbortController();
@@ -96,42 +90,9 @@ export class NgxPlayerComponent {
         video?.addEventListener('waiting', () => this.videoLoading.set(!!video?.networkState), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
-    private isPaused$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.video() || this.audio();
-        if (!media) return;
-        const controller = new AbortController();
-        media.addEventListener('pause', () => this.paused.set(!this.isLoading()), { signal: controller.signal });
-        media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
-        onCleanup(() => controller.abort());
-    });
-    private sync$ = effect(() => {
-        const audio = this.audio();
-        const video = this.video();
-        if (!audio || !video) return;
-        if (this.isLoading()) {
-            if (!!audio.networkState) audio.pause();
-            if (!!video.networkState) video.pause();
-        } else if (!untracked(this.isPaused)) {
-            const drift = Math.abs(audio.currentTime - video.currentTime);
-            if (drift > 0.1) audio.currentTime = video.currentTime;
-            const audioPlayable = !!audio.networkState;
-            if (audioPlayable) audio.play().catch(() => {});
-            const videoPlayable = !!video.networkState && (!audio.paused || !audioPlayable);
-            if (videoPlayable) video.play().catch(() => {});
-        }
-    });
 
     private deleteElement<T extends HTMLElement>(sources: T[], source: T): T[] {
         source.remove();
         return sources.filter((s) => s !== source);
-    }
-
-    protected onTogglePlay(): void {
-        this.paused.update((paused) => !paused);
-        if (this.isLoading()) return;
-        const audio = this.audio();
-        if (!!audio?.networkState) this.isPaused() ? audio.pause() : audio.play().catch(() => {});
-        const video = this.video();
-        if (!!video?.networkState) this.isPaused() ? video.pause() : video.play().catch(() => {});
     }
 }

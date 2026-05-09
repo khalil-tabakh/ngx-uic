@@ -1,4 +1,4 @@
-import { Directive, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, ElementRef, afterRenderEffect, effect, inject, linkedSignal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -10,13 +10,14 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
     exportAs: 'ngxPlay'
 })
 export class NgxPlayDirective {
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private player = inject(NgxPlayerComponent);
 
     readonly ended = linkedSignal({
         source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.ended ?? audio?.ended ?? false
     });
-    readonly paused = linkedSignal(() => this.player.isPaused());
+    readonly paused = linkedSignal(() => this.player.video()?.paused ?? this.player.audio()?.paused ?? true);
 
     private ended$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
@@ -34,12 +35,28 @@ export class NgxPlayDirective {
         media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
-    private toggle$ = effect(() => {
-        const isPaused = this.paused();
-        if (this.player.isLoading()) return;
-        const audio = this.player.audio();
-        if (!!audio?.networkState) isPaused ? audio.pause() : audio.play().catch(() => {});
-        const video = this.player.video();
-        if (!!video?.networkState) isPaused ? video.pause() : video.play().catch(() => {});
+
+    private toggle$ = afterRenderEffect({
+        earlyRead: (onCleanup) => {
+            const player = this.element.closest('ngx-player');
+            const onClick = () => this.paused.set(!this.paused());
+            player?.addEventListener('click', onClick);
+            onCleanup(() => player?.removeEventListener('click', onClick));
+        },
+        mixedReadWrite: () => {
+            const audio = this.player.audio();
+            const video = this.player.video();
+            if (this.player.isLoading()) {
+                if (!!audio?.networkState) audio.pause();
+                if (!!video?.networkState) video.pause();
+                return;
+            }
+            if (audio && video) {
+                const drift = Math.abs(audio.currentTime - video.currentTime);
+                if (drift > 0.1) audio.currentTime = video.currentTime;
+            }
+            if (!!audio?.networkState) this.paused() ? audio.pause() : audio.play().catch(() => {});
+            if (!!video?.networkState) this.paused() ? video.pause() : video.play().catch(() => {});
+        }
     });
 }
