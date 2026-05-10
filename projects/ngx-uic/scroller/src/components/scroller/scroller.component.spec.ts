@@ -1,11 +1,11 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, ElementRef, booleanAttribute, input, provideZonelessChangeDetection, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NgxScrollerComponent } from './scroller.component';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
-    imports: [CommonModule, NgxScrollerComponent],
+    imports: [NgxScrollerComponent],
     template: `
         <ngx-scroller
             class="column"
