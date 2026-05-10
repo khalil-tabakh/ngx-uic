@@ -1,4 +1,5 @@
-import { DOCUMENT, Directive, computed, effect, inject, linkedSignal, resource } from '@angular/core';
+import { DOCUMENT, Directive, ResourceSnapshot, computed, effect, inject, linkedSignal, resource, untracked } from '@angular/core';
+import { MediaPlayer, MediaPlayerClass, Representation } from 'dashjs';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -21,16 +22,38 @@ export class NgxResolutionDirective {
         loader: async (request) => {
             const { language, sources } = request.params;
             const promises = sources.map((source) => new Promise<HTMLSourceElement>((resolve, reject) => {
-                if (Number(source.dataset['resolution'])) return resolve(source);
+                if (source.dataset['resolution']) {
+                    source.dataset['resolution'] = source.dataset['resolution'].split(',').filter(Number).toString();
+                    if (source.dataset['resolution']) return resolve(source);
+                }
                 const video = this.document.createElement('video');
-                video.preload = 'metadata';
-                video.src = source.src;
-                video.onerror = () => reject(source);
-                video.onloadedmetadata = () => {
-                    const resolution = Math.min(video.videoHeight, video.videoWidth);
-                    source.dataset['resolution'] = String(resolution);
-                    return resolve(source);
-                };
+                switch (source.src.split('?')[0].split('.').at(-1)) {
+                    case 'mpd':
+                        const dash = MediaPlayer().create();
+                        dash.initialize(video, source.src);
+                        dash.on('error', () => {
+                            dash.destroy();
+                            return reject(source);
+                        });
+                        dash.on('streamInitialized', () => {
+                            const representations = dash.getRepresentationsByType('video');
+                            const resolutions = representations.map((representation) => this.getResolution(dash, representation));
+                            source.dataset['resolution'] = new Set(resolutions).values().toArray().toString();
+                            dash.destroy();
+                            return resolve(source);
+                        });
+                        break;
+                    default:
+                        video.preload = 'metadata';
+                        video.src = source.src;
+                        video.onerror = () => reject(source);
+                        video.onloadedmetadata = () => {
+                            const resolution = this.toResolution(video.videoHeight, video.videoWidth);
+                            source.dataset['resolution'] = String(resolution);
+                            return resolve(source);
+                        };
+                        break;
+                }
             }));
             const results = await Promise.allSettled(promises);
             return results.reduce((sources, result) => {
@@ -43,13 +66,17 @@ export class NgxResolutionDirective {
         }
     }).asReadonly();
 
-    readonly resolutions = linkedSignal<HTMLSourceElement[], number[]>({
-        source: this.sources.value,
-        computation: (sources, previous) => {
-            if (this.sources.isLoading()) return previous?.value || [];
-            const resolutions = sources.flatMap((source) => source.dataset['resolution']?.split(',').map(Number) || []);
-            return new Set(resolutions).values().toArray();
-        }
+    readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, boolean>({
+        source: this.sources.snapshot,
+        computation: (sources, previous) => sources.status == 'resolved'
+            ? sources.value.some((source) => source.dataset['resolution']!.split(',').length > 1)
+            : previous?.value || false
+    }).asReadonly();
+    readonly resolutions = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, number[]>({
+        source: this.sources.snapshot,
+        computation: (sources, previous) => sources.status == 'resolved'
+            ? new Set(sources.value.flatMap((source) => source.dataset['resolution']!.split(',').map(Number))).values().toArray()
+            : previous?.value || []
     }).asReadonly();
 
     readonly resolution = linkedSignal<number[], number>({
@@ -62,37 +89,89 @@ export class NgxResolutionDirective {
         }
     });
 
+    readonly auto = linkedSignal<HTMLSourceElement | undefined, boolean>({
+        source: this.player.videoSource,
+        computation: (source, previous) => !previous?.source
+            ? ['mpd'].includes(source?.src.split('?')[0].split('.').at(-1)!)
+            : source
+                ? previous?.value || !source.dataset['resolution']?.split(',').map(Number).includes(this.resolution())
+                : previous?.value || false
+    });
+
+    private auto$ = effect((onCleanup) => {
+        const dash = this.player.videoDash();
+        if (!dash) return;
+        const onDynamicToStatic = () => this.auto.set(dash.getSettings().streaming?.abr?.autoSwitchBitrate?.video ?? true);
+        dash.on('dynamicToStatic', onDynamicToStatic);
+        onCleanup(() => dash.off('dynamicToStatic', onDynamicToStatic));
+    });
     private resolution$ = effect((onCleanup) => {
         const video = this.player.video();
         if (!video) return;
         const mutation$ = new MutationObserver(() => this.resolution.set(Number(video?.dataset['resolution'] || '')));
         mutation$.observe(video, { attributeFilter: ['data-resolution'] });
-        const onLoadstart = () => {
-            const source = this.sources.value().find((source) => source.src === video.currentSrc);
-            this.resolution.set(Number(source?.dataset['resolution'] || ''));
+        const onLoadedmetadata = () => {
+            const source = this.player.videoSource();
+            if (!source?.dataset['resolution']) this.resolution.set(0);
+            else if (source.dataset['resolution'].split(',').length < 2) this.resolution.set(Number(source.dataset['resolution']));
+            else if (this.auto()) this.resolution.set(this.getResolution(dash));
+            else { /** Force retrigger the {@link switch$} effect */
+                const resolution = this.resolution();
+                this.resolution.set(0);
+                this.resolution.set(resolution);
+            }
         };
-        video.addEventListener('loadstart', onLoadstart);
+        video.addEventListener('loadedmetadata', onLoadedmetadata);
+        const dash = this.player.videoDash();
+        const onQualityChangeRequested = () => this.resolution.set(this.getResolution(dash));
+        dash?.on('qualityChangeRequested', onQualityChangeRequested);
         onCleanup(() => {
             mutation$.disconnect();
-            video.removeEventListener('loadstart', onLoadstart);
+            video.removeEventListener('loadedmetadata', onLoadedmetadata);
+            dash?.off('qualityChangeRequested', onQualityChangeRequested);
         });
     });
     private switch$ = effect(() => {
         if (this.sources.isLoading()) return;
         const resolution = this.resolution() ? String(this.resolution()) : '';
         const video = this.player.video();
-        if (video) this.reload(resolution, video, this.sources.value());
+        if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash));
+    });
+    private toggle$ = effect(() => {
+        const auto = this.auto();
+        const dash = this.player.videoDash();
+        dash?.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: auto } } } });
     });
 
-    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[]): void {
+    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[], dash?: MediaPlayerClass): void {
         media.dataset['resolution'] = resolution;
         const currentSources = sources.toReversed().filter((source) => {
-            const isSameResolution = !resolution || source.dataset['resolution']!.split(',').includes(resolution);
+            const isSameResolution = this.isAutomatable() && this.auto()
+                ? source.dataset['resolution']!.split(',').length > 1
+                : !resolution || source.dataset['resolution']!.split(',').includes(resolution);
             return isSameResolution ? !Boolean(media.prepend(source)) : Boolean(source.remove());
         });
-        if (currentSources.find((currentSource) => currentSource.src === media.currentSrc)) return;
-        const currentTime = media.currentTime || 0;
-        media.load();
-        media.currentTime = currentTime;
+        switch (true) {
+            case currentSources.some((currentSource) => currentSource.src === dash?.getSource()):
+                const representations = dash?.getRepresentationsByType('video');
+                const representation = representations?.find((representation) => this.getResolution(dash, representation) === Number(resolution));
+                if (representation) dash!.setRepresentationForTypeById('video', representation.id, true);
+                break;
+            case currentSources.every((currentSource) => currentSource.src !== media.currentSrc):
+                const currentTime = media.currentTime || 0;
+                media.removeAttribute('src');
+                media.load();
+                if (currentSources.length) media.addEventListener('loadedmetadata', () => media.currentTime = currentTime, { once: true });
+                break;
+        }
+    }
+    
+    private getResolution(dash?: MediaPlayerClass, representation?: Representation): number {
+        representation ||= dash?.getCurrentRepresentationForType('video') ?? undefined;
+        return dash && representation ? this.toResolution(representation.height, representation.width) : this.resolution();
+    }
+
+    private toResolution(height: number, width: number): number {
+        return Math.min(height, width);
     }
 }

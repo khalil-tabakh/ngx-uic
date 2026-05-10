@@ -1,4 +1,4 @@
-import { Directive, computed, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -34,36 +34,34 @@ export class NgxLanguageDirective {
     private language$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
         if (!media) return;
-        const mutation$ = new MutationObserver(() => this.language.set(media?.lang || ''));
+        const mutation$ = new MutationObserver(() => this.language.set(media.lang));
         mutation$.observe(media, { attributeFilter: ['lang'] });
-        const onLoadstart = () => {
-            const source = this.audioSources().concat(this.videoSources()).find((source) => source.src === media.currentSrc);
-            this.language.set(source?.lang || '');
-        };
-        media.addEventListener('loadstart', onLoadstart);
+        const onLoadedmetadata = () => this.language.set(this.player.audioSource()?.lang || this.player.videoSource()?.lang || '');
+        media.addEventListener('loadedmetadata', onLoadedmetadata);
         onCleanup(() => {
             mutation$.disconnect();
-            media.removeEventListener('loadstart', onLoadstart);
+            media.removeEventListener('loadedmetadata', onLoadedmetadata);
         });
     });
     private switch$ = effect(() => {
         const audioLanguage = this.language();
         const audio = this.player.audio();
-        if (audio) this.reload(audioLanguage, audio, this.audioSources());
+        if (audio) this.reload(audioLanguage, audio, this.audioSources(), untracked(this.player.audioSource));
         const videoLanguage = !audio?.getElementsByTagName('source').length ? audioLanguage : '';
         const video = this.player.video();
-        if (video) this.reload(videoLanguage, video, this.videoSources());
+        if (video) this.reload(videoLanguage, video, this.videoSources(), untracked(this.player.videoSource));
     });
 
-    private reload(language: string, media: HTMLMediaElement, sources: HTMLSourceElement[]): void {
+    private reload(language: string, media: HTMLMediaElement, sources: HTMLSourceElement[], source?: HTMLSourceElement): void {
         media.lang = language;
         const currentSources = sources.toReversed().filter((source) => {
             const isSameLanguage = !language || language === source.lang;
             return isSameLanguage ? !Boolean(media.prepend(source)) : Boolean(source.remove());
         });
-        if (currentSources.find((currentSource) => currentSource.src === media.currentSrc)) return;
+        if (currentSources.some((currentSource) => currentSource.src === source?.src)) return;
         const currentTime = media.currentTime || 0;
+        media.removeAttribute('src');
         media.load();
-        media.currentTime = currentTime;
+        if (currentSources.length) media.addEventListener('loadedmetadata', () => media.currentTime = currentTime, { once: true });
     }
 }

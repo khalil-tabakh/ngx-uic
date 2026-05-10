@@ -1,4 +1,5 @@
 import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal } from '@angular/core';
+import { MediaPlayer, MediaPlayerClass } from 'dashjs';
 
 @Component({
     selector: 'ngx-player',
@@ -27,6 +28,29 @@ export class NgxPlayerComponent {
         computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
     });
 
+    readonly audioDash = linkedSignal<HTMLSourceElement | undefined, MediaPlayerClass | undefined>({
+        source: this.audioSource,
+        computation: (source, previous) => {
+            previous?.value?.destroy();
+            if (!source?.src.split('?')[0].endsWith('.mpd')) return;
+            const dash = MediaPlayer().create();
+            dash.initialize(this.audio(), source.src, this.audio()?.autoplay);
+            dash.on('error', () => source.dispatchEvent(new Event('error')));
+            return dash;
+        }
+    }).asReadonly();
+    readonly videoDash = linkedSignal<HTMLSourceElement | undefined, MediaPlayerClass | undefined>({
+        source: this.videoSource,
+        computation: (source, previous) => {
+            previous?.value?.destroy();
+            if (!source?.src.split('?')[0].endsWith('.mpd')) return;
+            const dash = MediaPlayer().create();
+            dash.initialize(this.video(), source.src, this.video()?.autoplay);
+            dash.on('error', () => source.dispatchEvent(new Event('error')));
+            return dash;
+        }
+    }).asReadonly();
+
     private audioLoading = signal(false);
     private videoLoading = signal(false);
 
@@ -35,6 +59,7 @@ export class NgxPlayerComponent {
     private audioSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.audioSources().forEach((source) => source.addEventListener('error', (event) => {
+            if (event.isTrusted && ['mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
             if (navigator.onLine) this.audioSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
@@ -42,6 +67,7 @@ export class NgxPlayerComponent {
     private videoSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.videoSources().forEach((source) => source.addEventListener('error', (event) => {
+            if (event.isTrusted && ['mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
             if (navigator.onLine) this.videoSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
@@ -62,6 +88,7 @@ export class NgxPlayerComponent {
         audio.addEventListener('loadstart', () => {
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
             if (source) this.audioSource.set(source);
+            this.audioDash();
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -73,6 +100,7 @@ export class NgxPlayerComponent {
         video.addEventListener('loadstart', () => {
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
             if (source) this.videoSource.set(source);
+            this.videoDash();
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
