@@ -1,6 +1,6 @@
-import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal } from '@angular/core';
-import { MediaPlayer, MediaPlayerClass } from 'dashjs';
-import Hls from 'hls.js';
+import { Component, ElementRef, computed, contentChild, effect, input, linkedSignal, signal } from '@angular/core';
+import { MediaPlayer, MediaPlayerClass, MediaPlayerSettingClass } from 'dashjs';
+import Hls, { HlsConfig } from 'hls.js';
 
 @Component({
     selector: 'ngx-player',
@@ -10,6 +10,11 @@ import Hls from 'hls.js';
     host: { 'tabindex': '0' }
 })
 export class NgxPlayerComponent {
+    readonly audioDashConfig = input<MediaPlayerSettingClass>({});
+    readonly audioHLSConfig = input<Partial<HlsConfig>>();
+    readonly videoDashConfig = input<MediaPlayerSettingClass>({});
+    readonly videoHLSConfig = input<Partial<HlsConfig>>();
+
     private audioRef = contentChild<HTMLAudioElement, ElementRef<HTMLAudioElement>>('audio', { read: ElementRef });
     private videoRef = contentChild<HTMLVideoElement, ElementRef<HTMLVideoElement>>('video', { read: ElementRef });
 
@@ -36,6 +41,7 @@ export class NgxPlayerComponent {
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
             const dash = MediaPlayer().create();
             dash.initialize(this.audio(), source.src, this.audio()?.autoplay);
+            dash.updateSettings(this.audioDashConfig());
             dash.on('error', () => source.dispatchEvent(new Event('error')));
             return dash;
         }
@@ -45,7 +51,7 @@ export class NgxPlayerComponent {
         computation: (source, previous) => {
             previous?.value?.destroy();
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
-            const hls = new Hls();
+            const hls = new Hls(this.audioHLSConfig());
             hls.attachMedia(this.audio()!);
             hls.loadSource(source.src);
             hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
@@ -59,6 +65,7 @@ export class NgxPlayerComponent {
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
             const dash = MediaPlayer().create();
             dash.initialize(this.video(), source.src, this.video()?.autoplay);
+            dash.updateSettings(this.videoDashConfig());
             dash.on('error', () => source.dispatchEvent(new Event('error')));
             return dash;
         }
@@ -68,7 +75,7 @@ export class NgxPlayerComponent {
         computation: (source, previous) => {
             previous?.value?.destroy();
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
-            const hls = new Hls();
+            const hls = new Hls(this.videoHLSConfig());
             hls.attachMedia(this.video()!);
             hls.loadSource(source.src);
             hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
