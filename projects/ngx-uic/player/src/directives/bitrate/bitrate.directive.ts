@@ -17,7 +17,7 @@ export class NgxBitrateDirective {
 
     private language = computed(() => this.player.audioSource()?.lang || this.player.audio()?.lang);
 
-    private sources = resource({
+    private audioSources = resource({
         defaultValue: [],
         params: () => ({ language: this.language(), sources: this.player.audioSources() }),
         loader: async (request) => {
@@ -85,18 +85,81 @@ export class NgxBitrateDirective {
             }, [] as HTMLSourceElement[]);
         }
     }).asReadonly();
-
-    readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, boolean>({
-        source: this.sources.snapshot,
-        computation: (sources, previous) => sources.status == 'resolved'
-            ? sources.value.some((source) => source.dataset['bitrate']!.split(',').length > 1)
-            : previous?.value || false
+    private videoSources = resource({
+        defaultValue: [],
+        params: () => ({ source: this.player.videoSource(), sources: this.player.videoSources() }),
+        loader: async (request) => {
+            const { source, sources } = request.params;
+            const promises = sources.map((source) => new Promise<HTMLSourceElement>((resolve, reject) => {
+                if (source.dataset['bitrate']) {
+                    source.dataset['bitrate'] = source.dataset['bitrate'].split(',').filter(Number).toString();
+                    if (source.dataset['bitrate']) return resolve(source);
+                }
+                const video = this.document.createElement('video');
+                switch (source.src.split('?')[0].split('.').at(-1)) {
+                    case 'm3u8':
+                        const hls = new Hls();
+                        hls.on(Hls.Events.ERROR, (_, data) => {
+                            if (!data.fatal) return;
+                            hls.destroy();
+                            return reject(source);
+                        });
+                        hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+                            const bitrates = data.audioTracks.map((track) => this.getHLSBitrate(hls, track));
+                            source.dataset['bitrate'] = new Set(bitrates).values().toArray().toString();
+                            hls.destroy();
+                            return resolve(source);
+                        });
+                        hls.attachMedia(video);
+                        hls.loadSource(source.src);
+                        break;
+                    case 'mpd':
+                        const dash = MediaPlayer().create();
+                        dash.initialize(video, source.src);
+                        dash.on('error', () => {
+                            dash.destroy();
+                            return reject(source);
+                        });
+                        dash.on('streamInitialized', () => {
+                            const representations = dash.getRepresentationsByType('audio');
+                            const bitrates = representations.map((representation) => this.getDashBitrate(dash, representation));
+                            source.dataset['bitrate'] = new Set(bitrates).values().toArray().toString();
+                            dash.destroy();
+                            return resolve(source);
+                        });
+                        break;
+                    default:
+                        reject(null);
+                        break;
+                }
+            }));
+            const results = await Promise.allSettled(promises);
+            return results.reduce((sources, result) => {
+                if (result.status === 'fulfilled') result.value === source && sources.push(result.value);
+                else result.reason?.dispatchEvent(new Event('error'));
+                return sources;
+            }, [] as HTMLSourceElement[]);
+        }
     }).asReadonly();
-    readonly bitrates = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, number[]>({
-        source: this.sources.snapshot,
-        computation: (sources, previous) => sources.status == 'resolved'
-            ? new Set(sources.value.flatMap((source) => source.dataset['bitrates']!.split(',').map(Number))).values().toArray()
-            : previous?.value || []
+
+    readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>[], boolean>({
+        source: () => [this.audioSources.snapshot(), this.videoSources.snapshot()],
+        computation: ([audioSources, videoSources], previous) => {
+            if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
+                const sources = audioSources.value.length ? audioSources.value : videoSources.value;
+                return sources.some((source) => Number(source.dataset['bitrate']?.split(',').length) > 1)
+            } else return previous?.value || false;
+        }
+    }).asReadonly();
+    readonly bitrates = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>[], number[]>({
+        source: () => [this.audioSources.snapshot(), this.videoSources.snapshot()],
+        computation: ([audioSources, videoSources], previous) => {
+            if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
+                const sources = audioSources.value.length ? audioSources.value : videoSources.value;
+                const bitrates = sources.flatMap((source) => source.dataset['bitrate']?.split(',').filter(Number).map(Number) || []);
+                return new Set(bitrates).values().toArray()
+            } else return previous?.value || [];
+        }
     }).asReadonly();
 
     readonly bitrate = linkedSignal<number[], number>({
@@ -110,7 +173,7 @@ export class NgxBitrateDirective {
     });
 
     readonly auto = linkedSignal<HTMLSourceElement | undefined, boolean>({
-        source: this.player.audioSource,
+        source: () => this.player.audioSource() || this.player.videoSource(),
         computation: (source, previous) => !previous?.source
             ? ['m3u8', 'mpd'].includes(source?.src.split('?')[0].split('.').at(-1)!)
             : source
@@ -131,10 +194,10 @@ export class NgxBitrateDirective {
         });
     });
     private bitrate$ = effect((onCleanup) => {
-        const audio = this.player.audio();
-        if (!audio) return;
-        const mutation$ = new MutationObserver(() => this.bitrate.set(Number(audio.dataset['bitrate'] || '')));
-        mutation$.observe(audio, { attributeFilter: ['data-bitrate'] });
+        const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
+        if (!media) return;
+        const mutation$ = new MutationObserver(() => this.bitrate.set(Number(media.dataset['bitrate'] || '')));
+        mutation$.observe(media, { attributeFilter: ['data-bitrate'] });
         const onLoadedmetadata = () => {
             const source = this.player.audioSource();
             if (!source?.dataset['bitrate']) this.bitrate.set(0);
@@ -147,30 +210,33 @@ export class NgxBitrateDirective {
                 this.bitrate.set(bitrate);
             }
         };
-        audio.addEventListener('loadedmetadata', onLoadedmetadata);
-        const dash = this.player.audioDash();
+        media.addEventListener('loadedmetadata', onLoadedmetadata);
+        const dash = this.player.audioDash() || this.player.videoDash();
         const onQualityChangeRequested = () => this.bitrate.set(this.getDashBitrate(dash));
         dash?.on('qualityChangeRequested', onQualityChangeRequested);
-        const hls = this.player.videoHLS();
+        const hls = this.player.audioHLS() || this.player.videoHLS();
         const onHlsAudioTrackSwitched = () => this.bitrate.set(this.getHLSBitrate(hls));
         hls?.on(Hls.Events.AUDIO_TRACK_SWITCHED, onHlsAudioTrackSwitched);
         onCleanup(() => {
             mutation$.disconnect();
-            audio.removeEventListener('loadedmetadata', onLoadedmetadata);
+            media.removeEventListener('loadedmetadata', onLoadedmetadata);
             dash?.off('qualityChangeRequested', onQualityChangeRequested);
             hls?.off(Hls.Events.AUDIO_TRACK_SWITCHED, onHlsAudioTrackSwitched);
         });
     });
     private switch$ = effect(() => {
-        if (this.sources.isLoading()) return;
-        const bitrate = this.bitrate() ? String(this.bitrate()) : '';
+        if (this.audioSources.isLoading() || this.videoSources.isLoading()) return;
+        const audioBitrate = this.bitrate() ? String(this.bitrate()) : '';
         const audio = this.player.audio();
-        if (audio) this.reload(bitrate, audio, this.sources.value(), untracked(this.player.audioDash), untracked(this.player.audioHLS));
+        if (audio) this.reload(audioBitrate, audio, this.audioSources.value(), untracked(this.player.audioDash), untracked(this.player.audioHLS));
+        const videoBitrate = !audio?.getElementsByTagName('source').length ? audioBitrate : '';;
+        const video = this.player.video();
+        if (video) this.reload(videoBitrate, video, this.videoSources.value(), untracked(this.player.videoDash), untracked(this.player.videoHLS));
     });
     private toggle$ = effect(() => {
-        const dash = this.player.audioDash();
+        const dash = this.player.audioDash() || this.player.videoDash();
         if (dash) dash?.updateSettings({ streaming: { abr: { autoSwitchBitrate: { audio: this.auto() } } } });
-        const hls = this.player.videoHLS();
+        const hls = this.player.audioHLS() || this.player.videoHLS();
         if (hls && this.auto()) hls.audioTrack = -1;
     });
 
@@ -179,14 +245,14 @@ export class NgxBitrateDirective {
         const isAuto = this.isAutomatable() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {
             const isSameBitrate = isAuto
-                ? source.dataset['bitrate']!.split(',').length > 1
+                ? Number(source.dataset['bitrate']?.split(',').length) > 1
                 : !bitrate || source.dataset['bitrate']?.split(',').includes(bitrate);
             return isSameBitrate ? !Boolean(media.prepend(source)) : Boolean(source.remove());
         });
         switch (true) {
             case currentSources.some((currentSource) => currentSource.src === dash?.getSource()):
                 const representations = dash!.getRepresentationsByType('audio');
-                const representation = representations?.find((representation) => this.getDashBitrate(dash, representation) === Number(bitrate));
+                const representation = representations.find((representation) => this.getDashBitrate(dash, representation) === Number(bitrate));
                 if (representation) dash!.setRepresentationForTypeById('audio', representation.id, true);
                 break;
             case currentSources.some((currentSource) => currentSource.src === hls?.url):

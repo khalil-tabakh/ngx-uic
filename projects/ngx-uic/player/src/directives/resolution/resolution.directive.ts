@@ -85,15 +85,22 @@ export class NgxResolutionDirective {
 
     readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, boolean>({
         source: this.sources.snapshot,
-        computation: (sources, previous) => sources.status == 'resolved'
-            ? sources.value.some((source) => source.dataset['resolution']!.split(',').length > 1)
-            : previous?.value || false
+        computation: (videoSources, previous) => {
+            if (videoSources.status == 'resolved') {
+                const sources = videoSources.value;
+                return sources.some((source) => Number(source.dataset['resolution']?.split(',').length) > 1);
+            } else return previous?.value || false;
+        }
     }).asReadonly();
     readonly resolutions = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, number[]>({
         source: this.sources.snapshot,
-        computation: (sources, previous) => sources.status == 'resolved'
-            ? new Set(sources.value.flatMap((source) => source.dataset['resolution']!.split(',').map(Number))).values().toArray()
-            : previous?.value || []
+        computation: (videoSources, previous) => {
+            if (videoSources.status == 'resolved') {
+                const sources = videoSources.value;
+                const resolutions = sources.flatMap((source) => source.dataset['resolution']?.split(',').filter(Number).map(Number) || []);
+                return new Set(resolutions).values().toArray();
+            } else return previous?.value || [];
+        }
     }).asReadonly();
 
     readonly resolution = linkedSignal<number[], number>({
@@ -176,14 +183,14 @@ export class NgxResolutionDirective {
         const isAuto = this.isAutomatable() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {
             const isSameResolution = isAuto
-                ? source.dataset['resolution']!.split(',').length > 1
-                : !resolution || source.dataset['resolution']!.split(',').includes(resolution);
+                ? Number(source.dataset['resolution']?.split(',').length) > 1
+                : !resolution || source.dataset['resolution']?.split(',').includes(resolution);
             return isSameResolution ? !Boolean(media.prepend(source)) : Boolean(source.remove());
         });
         switch (true) {
             case currentSources.some((currentSource) => currentSource.src === dash?.getSource()):
-                const representations = dash?.getRepresentationsByType('video');
-                const representation = representations?.find((representation) => this.getDashResolution(dash, representation) === Number(resolution));
+                const representations = dash!.getRepresentationsByType('video');
+                const representation = representations.find((representation) => this.getDashResolution(dash, representation) === Number(resolution));
                 if (representation) dash!.setRepresentationForTypeById('video', representation.id, true);
                 break;
             case currentSources.some((currentSource) => currentSource.src === hls?.url):
