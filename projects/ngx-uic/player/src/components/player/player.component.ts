@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, contentChild, effect, linkedSignal, signal } from '@angular/core';
 import { MediaPlayer, MediaPlayerClass } from 'dashjs';
+import Hls from 'hls.js';
 
 @Component({
     selector: 'ngx-player',
@@ -39,6 +40,18 @@ export class NgxPlayerComponent {
             return dash;
         }
     }).asReadonly();
+    readonly audioHLS = linkedSignal<HTMLSourceElement | undefined, Hls | undefined>({
+        source: this.audioSource,
+        computation: (source, previous) => {
+            previous?.value?.destroy();
+            if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
+            const hls = new Hls();
+            hls.attachMedia(this.audio()!);
+            hls.loadSource(source.src);
+            hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
+            return hls;
+        }
+    });
     readonly videoDash = linkedSignal<HTMLSourceElement | undefined, MediaPlayerClass | undefined>({
         source: this.videoSource,
         computation: (source, previous) => {
@@ -50,6 +63,18 @@ export class NgxPlayerComponent {
             return dash;
         }
     }).asReadonly();
+    readonly videoHLS = linkedSignal<HTMLSourceElement | undefined, Hls | undefined>({
+        source: this.videoSource,
+        computation: (source, previous) => {
+            previous?.value?.destroy();
+            if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
+            const hls = new Hls();
+            hls.attachMedia(this.video()!);
+            hls.loadSource(source.src);
+            hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
+            return hls;
+        }
+    });
 
     private audioLoading = signal(false);
     private videoLoading = signal(false);
@@ -59,7 +84,7 @@ export class NgxPlayerComponent {
     private audioSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.audioSources().forEach((source) => source.addEventListener('error', (event) => {
-            if (event.isTrusted && ['mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
+            if (event.isTrusted && ['m3u8', 'mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
             if (navigator.onLine) this.audioSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
@@ -67,7 +92,7 @@ export class NgxPlayerComponent {
     private videoSources$ = effect((onCleanup) => {
         const controller = new AbortController();
         this.videoSources().forEach((source) => source.addEventListener('error', (event) => {
-            if (event.isTrusted && ['mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
+            if (event.isTrusted && ['m3u8', 'mpd'].includes(source.src.split('?')[0].split('.').at(-1)!)) return;
             if (navigator.onLine) this.videoSources.update((sources) => this.deleteElement(sources, source));
         }, { signal: controller.signal }));
         onCleanup(() => controller.abort());
@@ -89,6 +114,7 @@ export class NgxPlayerComponent {
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
             if (source) this.audioSource.set(source);
             this.audioDash();
+            this.audioHLS();
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -101,6 +127,7 @@ export class NgxPlayerComponent {
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
             if (source) this.videoSource.set(source);
             this.videoDash();
+            this.videoHLS();
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });

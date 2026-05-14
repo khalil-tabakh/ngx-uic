@@ -1,5 +1,6 @@
 import { DOCUMENT, Directive, ResourceSnapshot, computed, effect, inject, linkedSignal, resource, untracked } from '@angular/core';
 import { MediaPlayer, MediaPlayerClass, Representation } from 'dashjs';
+import Hls, { Level } from 'hls.js';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -28,6 +29,22 @@ export class NgxResolutionDirective {
                 }
                 const video = this.document.createElement('video');
                 switch (source.src.split('?')[0].split('.').at(-1)) {
+                    case 'm3u8':
+                        const hls = new Hls();
+                        hls.attachMedia(video);
+                        hls.loadSource(source.src);
+                        hls.on(Hls.Events.ERROR, (_, event) => {
+                            if (!event.fatal) return;
+                            hls.destroy();
+                            return reject(source);
+                        });
+                        hls.on(Hls.Events.INIT_PTS_FOUND, () => {
+                            const resolutions = hls.levels.map((level) => this.getHLSResolution(hls, level));
+                            source.dataset['resolution'] = new Set(resolutions).values().toArray().toString();
+                            hls.destroy();
+                            return resolve(source);
+                        });
+                        break;
                     case 'mpd':
                         const dash = MediaPlayer().create();
                         dash.initialize(video, source.src);
@@ -37,7 +54,7 @@ export class NgxResolutionDirective {
                         });
                         dash.on('streamInitialized', () => {
                             const representations = dash.getRepresentationsByType('video');
-                            const resolutions = representations.map((representation) => this.getResolution(dash, representation));
+                            const resolutions = representations.map((representation) => this.getDashResolution(dash, representation));
                             source.dataset['resolution'] = new Set(resolutions).values().toArray().toString();
                             dash.destroy();
                             return resolve(source);
@@ -92,7 +109,7 @@ export class NgxResolutionDirective {
     readonly auto = linkedSignal<HTMLSourceElement | undefined, boolean>({
         source: this.player.videoSource,
         computation: (source, previous) => !previous?.source
-            ? ['mpd'].includes(source?.src.split('?')[0].split('.').at(-1)!)
+            ? ['m3u8', 'mpd'].includes(source?.src.split('?')[0].split('.').at(-1)!)
             : source
                 ? previous?.value || !source.dataset['resolution']?.split(',').map(Number).includes(this.resolution())
                 : previous?.value || false
@@ -100,10 +117,15 @@ export class NgxResolutionDirective {
 
     private auto$ = effect((onCleanup) => {
         const dash = this.player.videoDash();
-        if (!dash) return;
-        const onDynamicToStatic = () => this.auto.set(dash.getSettings().streaming?.abr?.autoSwitchBitrate?.video ?? true);
-        dash.on('dynamicToStatic', onDynamicToStatic);
-        onCleanup(() => dash.off('dynamicToStatic', onDynamicToStatic));
+        const onDynamicToStatic = () => this.auto.set(dash?.getSettings().streaming?.abr?.autoSwitchBitrate?.video ?? true);
+        dash?.on('dynamicToStatic', onDynamicToStatic);
+        const hls = this.player.videoHLS();
+        const onHlsLevelSwitched = () => this.auto.set(hls?.autoLevelEnabled ?? true);
+        hls?.on(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
+        onCleanup(() => {
+            dash?.off('dynamicToStatic', onDynamicToStatic);
+            hls?.off(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
+        });
     });
     private resolution$ = effect((onCleanup) => {
         const video = this.player.video();
@@ -114,7 +136,8 @@ export class NgxResolutionDirective {
             const source = this.player.videoSource();
             if (!source?.dataset['resolution']) this.resolution.set(0);
             else if (source.dataset['resolution'].split(',').length < 2) this.resolution.set(Number(source.dataset['resolution']));
-            else if (this.auto()) this.resolution.set(this.getResolution(dash));
+            else if (this.auto() && dash) this.resolution.set(this.getDashResolution(dash));
+            else if (this.auto() && hls) this.resolution.set(this.getHLSResolution(hls));
             else { /** Force retrigger the {@link switch$} effect */
                 const resolution = this.resolution();
                 this.resolution.set(0);
@@ -123,30 +146,36 @@ export class NgxResolutionDirective {
         };
         video.addEventListener('loadedmetadata', onLoadedmetadata);
         const dash = this.player.videoDash();
-        const onQualityChangeRequested = () => this.resolution.set(this.getResolution(dash));
+        const onQualityChangeRequested = () => this.resolution.set(this.getDashResolution(dash));
         dash?.on('qualityChangeRequested', onQualityChangeRequested);
+        const hls = this.player.videoHLS();
+        const onHlsLevelSwitched = () => this.resolution.set(this.getHLSResolution(hls));
+        hls?.on(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
         onCleanup(() => {
             mutation$.disconnect();
             video.removeEventListener('loadedmetadata', onLoadedmetadata);
             dash?.off('qualityChangeRequested', onQualityChangeRequested);
+            hls?.off(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
         });
     });
     private switch$ = effect(() => {
         if (this.sources.isLoading()) return;
         const resolution = this.resolution() ? String(this.resolution()) : '';
         const video = this.player.video();
-        if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash));
+        if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash), untracked(this.player.videoHLS));
     });
     private toggle$ = effect(() => {
-        const auto = this.auto();
         const dash = this.player.videoDash();
-        dash?.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: auto } } } });
+        if (dash) dash.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: this.auto() } } } });
+        const hls = this.player.videoHLS();
+        if (hls && this.auto()) hls.currentLevel = -1;
     });
 
-    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[], dash?: MediaPlayerClass): void {
+    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
         media.dataset['resolution'] = resolution;
+        const isAuto = this.isAutomatable() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {
-            const isSameResolution = this.isAutomatable() && this.auto()
+            const isSameResolution = isAuto
                 ? source.dataset['resolution']!.split(',').length > 1
                 : !resolution || source.dataset['resolution']!.split(',').includes(resolution);
             return isSameResolution ? !Boolean(media.prepend(source)) : Boolean(source.remove());
@@ -154,8 +183,12 @@ export class NgxResolutionDirective {
         switch (true) {
             case currentSources.some((currentSource) => currentSource.src === dash?.getSource()):
                 const representations = dash?.getRepresentationsByType('video');
-                const representation = representations?.find((representation) => this.getResolution(dash, representation) === Number(resolution));
+                const representation = representations?.find((representation) => this.getDashResolution(dash, representation) === Number(resolution));
                 if (representation) dash!.setRepresentationForTypeById('video', representation.id, true);
+                break;
+            case currentSources.some((currentSource) => currentSource.src === hls?.url):
+                const index = hls?.levels.findIndex((level) => this.getHLSResolution(hls, level) === Number(resolution));
+                if (index !== undefined && !isAuto) hls!.currentLevel = index;
                 break;
             case currentSources.every((currentSource) => currentSource.src !== media.currentSrc):
                 const currentTime = media.currentTime || 0;
@@ -166,9 +199,14 @@ export class NgxResolutionDirective {
         }
     }
     
-    private getResolution(dash?: MediaPlayerClass, representation?: Representation): number {
+    private getDashResolution(dash?: MediaPlayerClass, representation?: Representation): number {
         representation ||= dash?.getCurrentRepresentationForType('video') ?? undefined;
         return dash && representation ? this.toResolution(representation.height, representation.width) : this.resolution();
+    }
+    
+    private getHLSResolution(hls?: Hls, level?: Level): number {
+        level ||= hls?.levels.at(hls.currentLevel);
+        return hls && level ? parseInt(level.name) || this.toResolution(level.height, level.width) : this.resolution();
     }
 
     private toResolution(height: number, width: number): number {
