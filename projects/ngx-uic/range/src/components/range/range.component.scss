@@ -1,5 +1,5 @@
-$low: calc(var(--low, 0) * 1%);
-$high: calc(var(--high, 0) * 1%);
+$lower: calc(var(--lower, 0) * 1%);
+$upper: calc(var(--upper, 0) * 1%);
 
 :host {
     --progress-color: white;
@@ -56,7 +56,7 @@ $high: calc(var(--high, 0) * 1%);
         height: 100%;
         width: 100%;
         background: var(--progress-color);
-        transform: translateX($low) scaleX(calc($high - $low));
+        transform: translateX($lower) scaleX(calc($upper - $lower));
         transform-origin: left;
     }
 }
@@ -79,12 +79,12 @@ $high: calc(var(--high, 0) * 1%);
     cursor: grab;
 
     &:first-child {
-        display: var(--low, none);
-        left: $low;
+        display: var(--lower, none);
+        left: $lower;
     }
 
     &:last-child {
-        left: $high;
+        left: $upper;
     }
 
     input {
@@ -95,7 +95,7 @@ $high: calc(var(--high, 0) * 1%);
 .mark {
     position: absolute;
     top: 50%;
-    left: calc(var(--left) * 1%);
+    left: calc(var(--mark-left) * 1%);
     translate: -50% -50%;
     height: calc(100% / 3);
     aspect-ratio: 1;

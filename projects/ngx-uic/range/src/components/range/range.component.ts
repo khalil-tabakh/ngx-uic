@@ -1,8 +1,6 @@
-import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, inject, input, linkedSignal, model, numberAttribute, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, effect, inject, input, model, numberAttribute, untracked, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
-import { RangeType } from '../../models/range-type.model';
-import { clamp, closest, distance } from '../../utils/functions.util';
-import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
+import { between, clamp, closest, distance } from '../../utils/functions.util';
 
 @Component({
     selector: 'ngx-range',
@@ -15,14 +13,13 @@ import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttrib
 export class NgxRangeComponent {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement
 
-    readonly type = input<RangeType>('single');
+    readonly type = input<'single' | 'double'>('single');
     readonly min = input(0, { transform: numberAttribute });
     readonly max = input(100, { transform: numberAttribute });
-    readonly origin = input(0, { transform: numberAttribute });
-    readonly offset = input(1, { transform: numberAttribute });
-    readonly step = input<number | number[] | string>(1);
-    readonly splits = input<number[]>([]);
-    readonly marks = input<number | number[] | string>();
+    readonly step = input<readonly number[] | number | string>(1);
+    readonly mark = input<readonly number[] | number | string>([]);
+    readonly split = input<readonly number[] | number | string>([]);
+    readonly relative = input<number>(undefined, { transform: numberAttribute });
 
     readonly lower = model(25);
     readonly value = model(50);
@@ -33,24 +30,48 @@ export class NgxRangeComponent {
     readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
 
-    protected _min = computed(() => minAttribute(this.min(), this.max()));
-    protected _max = computed(() => maxAttribute(this.max(), this.min()));
-    
-    private _lower = computed(() => valueAttribute(this.type() === 'single' ? this.min() : this.lower(), this._min(), this._max(), 0));
-    private _upper = computed(() => valueAttribute(this.type() === 'single' ? this.value() : this.upper(), this._min(), this._max(), 100));
-    protected _origin = computed(() => valueAttribute(this.origin(), this._min(), this._max(), 0));
-    private _steps = computed(() => stepAttribute(this.step(), this._min(), this._max()));
-    protected _splits = computed(() => splitsAttribute(this.splits(), this._min(), this._max()));
-
-    protected _marks = computed(() => marksAttribute(this.marks(), this._min(), this._max(), this._steps()));
-
-    protected lowest = linkedSignal({
-        source: () => ({ lower: this._lower(), steps: this._steps() }),
-        computation: ({ lower, steps }) => closest(lower, steps)
+    readonly marks = computed<readonly number[]>(() => {
+        const min = this.min(), max = this.max(), mark = this.mark();
+        if (min >= max) return [];
+        return Array.isArray(mark)
+            ? new Set(mark).values().toArray().toSorted((a, b) => a - b).filter((mark) => between(mark, min, max))
+            : new Array(+mark ? Math.floor((max - min) / +mark) + 1 : 0).fill(0).map((_, index) => +mark * index + min);
     });
-    protected highest = linkedSignal({
-        source: () => ({ upper: this._upper(), steps: this._steps() }),
-        computation: ({ upper, steps }) => closest(upper, steps)
+    readonly splits = computed<readonly number[]>(() => {
+        const min = this.min(), max = this.max(), split = this.split();
+        if (min >= max) return [];
+        return Array.isArray(split)
+            ? new Set(split).values().toArray().toSorted((a, b) => a - b).filter((split) => between(split, min, max, true))
+            : new Array(+split ? Math.floor((max - min) / +split) + 1 : 0).fill(0).map((_, index) => +split * index + min);
+    });
+    readonly steps = computed<readonly number[]>(() => {
+        const min = this.min(), max = this.max(), step = this.step();
+        if (min >= max) return [min];
+        return Array.isArray(step)
+            ? new Set(step).values().toArray().toSorted((a, b) => a - b).filter((step) => between(step, min, max))
+            : new Array(+step ? Math.floor((max - min) / +step) + 1 : 0).fill(0).map((_, index) => +step * index + min);
+    });
+
+    readonly origin = computed(() => {
+        const min = this.min(), max = this.max(), steps = this.steps(), relative = this.relative();
+        if (relative === undefined || !between(relative, min, max)) return min;
+        else if (!steps.includes(relative)) return closest(relative, steps);
+        else return relative;
+    });
+
+    private initModels$ = effect(() => {
+        const min = this.min(), max = this.max(), steps = this.steps(), origin = this.origin(), type = this.type();
+        untracked(() => {
+            if (type === 'single') this.lower.set(NaN);
+            else if (!between(this.lower(), min, max)) this.lower.set(min);
+            else if (!steps.includes(this.lower())) this.lower.update((lower) => closest(lower, steps));
+            if (type === 'double') this.value.set(NaN);
+            else if (!between(this.value(), min, max)) this.value.set(origin);
+            else if (!steps.includes(this.value())) this.value.update((value) => closest(value, steps));
+            if (type === 'single') this.upper.set(NaN);
+            else if (!between(this.upper(), min, max)) this.upper.set(max);
+            else if (!steps.includes(this.upper())) this.upper.update((upper) => closest(upper, steps));
+        });
     });
 
     protected onSliding(event: PointerEvent): void {
@@ -74,8 +95,8 @@ export class NgxRangeComponent {
                 else return distance(offsetX, thumbs[0].offsetLeft) < distance(offsetX, thumbs[1].offsetLeft) ? this.lower : this.upper;
             })(event.offsetX);
             const oldStep = newModel();
-            const step = (this._max() - this._min()) * clamp(event.offsetX / slider.offsetWidth, 0, 1) + this._min();
-            const newStep = closest(step, this._steps());
+            const step = (this.max() - this.min()) * clamp(event.offsetX / slider.offsetWidth, 0, 1) + this.min();
+            const newStep = closest(step, this.steps());
             newModel.set(newStep);
             oldModel = newModel;
             if (newStep !== oldStep) this.element.dispatchEvent(new Event('input'));
