@@ -4,7 +4,7 @@
             class="segment"
             ngxSegment
             [min]="_min()"
-            [lowest]="type() === 'simple' ? _origin() : lowest()"
+            [lowest]="type() === 'single' ? _origin() : lowest()"
             [highest]="highest()"
             [max]="_max()"
             [split]="split"
@@ -15,7 +15,7 @@
         class="segment"
         ngxSegment
         [min]="_min()"
-        [lowest]="type() === 'simple' ? _origin() : lowest()"
+        [lowest]="type() === 'single' ? _origin() : lowest()"
         [highest]="highest()"
         [max]="_max()"
         [split]="_max()"
@@ -23,14 +23,14 @@
     ></div>
 </div>
 <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
-    @let low = type() === 'simple' ? null : (lowest() - _min()) / (_max() - _min()) * 100;
+    @let low = type() === 'single' ? null : (lowest() - _min()) / (_max() - _min()) * 100;
     <label tabindex="0" class="thumb" [style.--low]="low" #thumbRef>
         <input type="range" [min]="_min()" [max]="_max()" [step]="step().toString()" [value]="lowest()" />
     </label>
     @for (mark of _marks(); track $index) {
         <div
             class="mark"
-            [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'simple')"
+            [class.mark--lower]="mark < lowest() || (mark < highest() && type() === 'single')"
             [class.mark--upper]="mark > highest()"
             [style.--left]="(mark - _min()) / (_max() - _min()) * 100"
         >

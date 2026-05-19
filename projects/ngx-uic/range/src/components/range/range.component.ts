@@ -14,7 +14,7 @@ import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttrib
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
-    readonly type = input<RangeType>('simple');
+    readonly type = input<RangeType>('single');
     readonly min = input(0, { transform: numberAttribute });
     readonly lower = input(25, { transform: numberAttribute });
     readonly value = input(50, { transform: numberAttribute });
@@ -37,8 +37,8 @@ export class NgxRangeComponent {
     protected _min = computed(() => minAttribute(this.min(), this.max()));
     protected _max = computed(() => maxAttribute(this.max(), this.min()));
     
-    private _lower = computed(() => valueAttribute(this.type() === 'simple' ? this.min() : this.lower(), this._min(), this._max(), 0));
-    private _upper = computed(() => valueAttribute(this.type() === 'simple' ? this.value() : this.upper(), this._min(), this._max(), 100));
+    private _lower = computed(() => valueAttribute(this.type() === 'single' ? this.min() : this.lower(), this._min(), this._max(), 0));
+    private _upper = computed(() => valueAttribute(this.type() === 'single' ? this.value() : this.upper(), this._min(), this._max(), 100));
     protected _origin = computed(() => valueAttribute(this.origin(), this._min(), this._max(), 0));
     private _steps = computed(() => stepAttribute(this.step(), this._min(), this._max()));
     protected _splits = computed(() => splitsAttribute(this.splits(), this._min(), this._max()));
@@ -55,7 +55,7 @@ export class NgxRangeComponent {
     });
 
     private emitValue(value: number): void {
-        const event: RangeChange = this.type() === 'simple'
+        const event: RangeChange = this.type() === 'single'
             ? { value: this.highest() }
             : { lower: this.lowest(), upper: this.highest() };
         this.change.emit(event);
@@ -84,14 +84,14 @@ export class NgxRangeComponent {
         const thumbDistance = (thumb: HTMLElement) => Math.abs(event.offsetX - thumb.offsetLeft);
         let thumb = thumbDistance(thumbs[0]) < thumbDistance(thumbs[1]) ? thumbs[0] : thumbs[1];
         if (event.target === thumbs[0]) thumb = thumbs[0];
-        if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
+        if (event.target === thumbs[1] || this.type() === 'single') thumb = thumbs[1];
         if (event.target === slider) this.setValue(event.offsetX, thumb);
 
         const controller = new AbortController();
         slider.setPointerCapture(event.pointerId);
         slider.addEventListener('pointermove', (event) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
-            if (event.offsetX > thumbs[1].offsetLeft || this.type() === 'simple') thumb = thumbs[1];
+            if (event.offsetX > thumbs[1].offsetLeft || this.type() === 'single') thumb = thumbs[1];
             this.setValue(event.offsetX, thumb);
         }, { signal: controller.signal });
         slider.addEventListener('pointerup', () => {

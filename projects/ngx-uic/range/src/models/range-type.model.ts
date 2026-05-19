@@ -1,1 +1,1 @@
-export type RangeType = 'simple' | 'double';
+export type RangeType = 'single' | 'double';
