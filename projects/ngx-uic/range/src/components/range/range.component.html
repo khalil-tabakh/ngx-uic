@@ -1,15 +1,10 @@
-<div class="track">
-    @for (split of [...splits(), max()]; track $index) {
-        <div
-            class="segment"
-            ngxSegment
-            [min]="min()"
-            [lower]="type() === 'single' ? origin() : this.lower()"
-            [upper]="this.upper()"
-            [max]="max()"
-            [split]="split"
-            [splits]="splits()"
-        ></div>
+<div class="track" #trackRef>
+    @let segments = [min(), ...splits(), max()];
+    @for (start of segments; track $index) {
+        @if (!$last) {
+            @let end = segments[$index + 1];
+            <div class="segment" [style.--segment-width]="(end - start) / (max() - min()) * 100" #segmentRef></div>
+        }
     }
 </div>
 <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>

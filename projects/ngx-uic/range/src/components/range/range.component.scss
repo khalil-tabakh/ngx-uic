@@ -47,7 +47,7 @@ $upper: calc(var(--upper, 0) * 1%);
     position: relative;
     display: flex;
     height: 100%;
-    width: calc(var(--width, 100) * 1%);
+    width: calc(var(--segment-width, 100) * 1%);
     background: rgba(255, 255, 255, 0.2);
     background-clip: content-box;
 

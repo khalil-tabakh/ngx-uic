@@ -1,6 +1,6 @@
-import { Component, ElementRef, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
+import { Component, ViewContainerRef, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { NgxPlayerComponent } from '../player/player.component';
-import { NgxRangeComponent, between } from '../../../../range/public-api';
+import { NgxRangeComponent, between, clamp, percentage } from '../../../../range/public-api';
 
 @Component({
     selector: 'ngx-seekbar',
@@ -20,8 +20,7 @@ export class NgxSeekBarComponent {
     readonly marks = input<number[]>([]);
     readonly splits = input<number[]>([]);
 
-    readonly range = viewChild.required(NgxRangeComponent);
-    readonly rangeRef = viewChild.required<NgxRangeComponent, ElementRef<HTMLElement>>(NgxRangeComponent, { read: ElementRef });
+    readonly rangeRef = viewChild.required(NgxRangeComponent, { read: ViewContainerRef });
 
     private timer$?: NodeJS.Timeout;
 
@@ -55,44 +54,39 @@ export class NgxSeekBarComponent {
         onCleanup(() => media.removeEventListener('durationchange', onDurationchange));
     });
 
-    private applyBuffered$ = afterRenderEffect({
+    private renderBuffered$ = afterRenderEffect({
         write: () => {
-            const buffered = this.buffered();
-            const directives = this.range().segments();
-            const elementRefs = this.range().segmentRefs();
-            directives.forEach((directive, index) => {
-                const segment = directive.segment();
-                const segments = buffered.filter(([start, end]) => start < segment.end && end > segment.start);
-                const length = segment.end - segment.start;
-                const percentages = segments.reduce((percentages, [start, end]) => {
-                    percentages.push((Math.max(start, segment.start) - segment.start) / length * 100);
-                    percentages.push((Math.min(end, segment.end) - segment.start) / length * 100);
-                    return percentages;
-                }, [] as number[]);
-                const gradient = percentages.reduce((colors, percentage, index) => {
-                    if (percentage === 100) return colors;
-                    if (index % 2 === 0) colors.push(`transparent ${percentage}%`);
-                    colors.push(`var(--buffered-color) ${percentage}%`);
-                    if (index % 2 !== 0) colors.push(`transparent ${percentage}%`);
-                    return colors;
-                }, [] as string[]).join(', ');
-                elementRefs[index].nativeElement.style.setProperty('--buffered', String(gradient));
+            const range = this.rangeRef().injector.get(NgxRangeComponent);
+            range.segmentRefs().forEach((segmentRef, index) => {
+                const { start, end } = range.segments()[index];
+                const gradient = this.buffered()
+                    .filter((buffer) => buffer[0] < end && buffer[1] > start)
+                    .flatMap((buffer) => [
+                        percentage(Math.max(buffer[0], start), start, end),
+                        percentage(Math.min(buffer[1], end), start, end)
+                    ])
+                    .reduce((colors, stop, index) => {
+                        if (stop === 100) return colors;
+                        if (index % 2 === 0) colors.push(`transparent ${stop}%`);
+                        colors.push(`var(--buffered-color) ${stop}%`);
+                        if (index % 2 !== 0) colors.push(`transparent ${stop}%`);
+                        return colors;
+                    }, [] as string[])
+                    .join(', ');
+                const segment = segmentRef.nativeElement;
+                segment.style.setProperty('--buffered', `${gradient}`);
             });
         }
     });
-    private applyHovered$ = afterRenderEffect({
+    private renderHovered$ = afterRenderEffect({
         write: () => {
             const hovered = this.hovered();
-            const directives = this.range().segments();
-            const elementRefs = this.range().segmentRefs();
-            directives.forEach((directive, index) => {
-                const segment = directive.segment();
-                const percentage = Math.min(Math.max((hovered - segment.start) / (segment.end - segment.start) * 100, 0), 100);
-                const element = elementRefs[index].nativeElement;
-                element.style.setProperty('--hovered', String(percentage));
-                const start = segment.start;
-                const end = directives.at(index + 1)?.segment().start ?? this.duration();
-                element.classList.toggle('segment--hovered', between(hovered, start, end));
+            const range = this.rangeRef().injector.get(NgxRangeComponent);
+            range.segmentRefs().forEach((segmentRef, index) => {
+                const { start, end } = range.segments()[index];
+                const segment = segmentRef.nativeElement;
+                segment.classList.toggle('segment--hovered', between(hovered, start, end));
+                segment.style.setProperty('--hovered', `${clamp(percentage(hovered, start, end), 0, 100)}`);
             });
         }
     });
@@ -113,7 +107,7 @@ export class NgxSeekBarComponent {
     }
 
     protected onHovering(): void {
-        const range = this.rangeRef().nativeElement;
+        const range = this.rangeRef().element.nativeElement as HTMLElement;
         const rangeStyle = getComputedStyle(range);
         const rangePaddingLeft = parseFloat(rangeStyle.paddingLeft);
         const rangePaddingRight = parseFloat(rangeStyle.paddingRight);
@@ -135,7 +129,7 @@ export class NgxSeekBarComponent {
     }
 
     protected onSeek(): void {
-        const currentTime = this.range().value();
+        const currentTime = this.rangeRef().injector.get(NgxRangeComponent).value();
         if (this.player.audio()) this.player.audio()!.currentTime = currentTime;
         if (this.player.video()) this.player.video()!.currentTime = currentTime;
         this.currentTime.set(currentTime);
@@ -144,7 +138,7 @@ export class NgxSeekBarComponent {
     protected onSeeking(): void {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const range = this.rangeRef().nativeElement;
+        const range = this.rangeRef().element.nativeElement as HTMLElement;
         const paused = media.paused;
         if (!!media.networkState) media.pause();
         range.addEventListener('pointerup', () => {

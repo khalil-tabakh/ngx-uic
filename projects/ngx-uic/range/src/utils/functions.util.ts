@@ -9,3 +9,5 @@ export const closest = (value: number, array: readonly number[]) => array.length
     : value;
 
 export const distance = (value: number, origin: number) => Math.abs(value - origin);
+
+export const percentage = (value: number, min: number, max: number) => (value - min) / (max - min) * 100;

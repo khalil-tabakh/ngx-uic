@@ -1,10 +1,8 @@
-import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, effect, inject, input, model, numberAttribute, untracked, viewChild, viewChildren } from '@angular/core';
-import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
-import { between, clamp, closest, distance } from '../../utils/functions.util';
+import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, Signal, WritableSignal, afterRenderEffect, computed, effect, inject, input, model, numberAttribute, signal, untracked, viewChild, viewChildren } from '@angular/core';
+import { between, clamp, closest, distance, percentage } from '../../utils/functions.util';
 
 @Component({
     selector: 'ngx-range',
-    imports: [NgxSegmentDirective],
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
     host: { '(pointerdown)': 'onSliding($event)' },
@@ -25,10 +23,12 @@ export class NgxRangeComponent {
     readonly value = model(50);
     readonly upper = model(75);
 
-    readonly segments = viewChildren(NgxSegmentDirective);
-    readonly segmentRefs = viewChildren<NgxSegmentDirective, ElementRef<HTMLElement>>(NgxSegmentDirective, { read: ElementRef });
+    readonly segmentRefs = viewChildren<ElementRef<HTMLElement>>('segmentRef');
     readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
+    readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
+
+    readonly segments = signal([]) as Signal<readonly { start: number, end: number }[]>;
 
     readonly marks = computed<readonly number[]>(() => {
         const min = this.min(), max = this.max(), mark = this.mark();
@@ -72,6 +72,31 @@ export class NgxRangeComponent {
             else if (!between(this.upper(), min, max)) this.upper.set(max);
             else if (!steps.includes(this.upper())) this.upper.update((upper) => closest(upper, steps));
         });
+    });
+
+    private renderSegments$ = afterRenderEffect({
+        earlyRead: () => {
+            const track = this.trackRef().nativeElement;
+            const segments = this.segmentRefs().map((segmentRef) => {
+                const segment = segmentRef.nativeElement;
+                const segmentOffsetLeft = segment.offsetLeft;
+                const segmentOffsetRight = segment.offsetLeft + segment.offsetWidth;
+                const start = (this.max() - this.min()) * segmentOffsetLeft / track.offsetWidth + this.min();
+                const end = (this.max() - this.min()) * segmentOffsetRight / track.offsetWidth + this.min();
+                return { start, end };
+            });
+            (this.segments as WritableSignal<ReturnType<typeof this.segments>>).set(segments);
+        },
+        write: () => {
+            const lower = this.type() === 'single' ? this.min() : this.lower();
+            const upper = this.type() === 'single' ? this.value() : this.upper();
+            this.segmentRefs().forEach((segmentRef, index) => {
+                const { start, end } = this.segments()[index];
+                const segment = segmentRef.nativeElement;
+                segment.style.setProperty('--lower', `${clamp(percentage(lower, start, end), 0, 100)}`);
+                segment.style.setProperty('--upper', `${clamp(percentage(upper, start, end), 0, 100)}`);
+            });
+        }
     });
 
     protected onSliding(event: PointerEvent): void {
