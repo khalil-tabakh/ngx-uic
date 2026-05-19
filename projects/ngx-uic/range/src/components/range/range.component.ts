@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Renderer2, computed, inject, input, linkedSignal, numberAttribute, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, input, linkedSignal, numberAttribute, output, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
@@ -14,9 +14,6 @@ import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttrib
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
-    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    private renderer = inject(Renderer2);
-
     readonly type = input<RangeType>('simple');
     readonly min = input(0, { transform: numberAttribute });
     readonly lower = input(25, { transform: numberAttribute });
@@ -84,7 +81,6 @@ export class NgxRangeComponent {
 
     protected onSliding(event: PointerEvent): void {
         if (!event.isTrusted) event.stopPropagation();
-        const range = this.element;
         const slider = this.sliderRef().nativeElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
 
@@ -94,19 +90,15 @@ export class NgxRangeComponent {
         if (event.target === thumbs[1] || this.type() === 'simple') thumb = thumbs[1];
         if (event.target === slider) this.setValue(event.offsetX, thumb);
 
+        const controller = new AbortController();
         slider.setPointerCapture(event.pointerId);
-        this.renderer.setStyle(range, 'cursor', 'grabbing');
-        this.renderer.setStyle(thumb, 'cursor', 'grabbing');
-        const onPointerMove = this.renderer.listen(slider, 'pointermove', (event: PointerEvent) => {
+        slider.addEventListener('pointermove', (event) => {
             if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
             if (event.offsetX > thumbs[1].offsetLeft || this.type() === 'simple') thumb = thumbs[1];
             this.setValue(event.offsetX, thumb);
-        });
-        const onPointerUp = this.renderer.listen(slider, 'pointerup', () => {
-            this.renderer.setStyle(range, 'cursor', 'pointer');
-            this.renderer.setStyle(thumb, 'cursor', 'grab');
-            onPointerMove();
-            onPointerUp();
-        });
+        }, { signal: controller.signal });
+        slider.addEventListener('pointerup', () => {
+            controller.abort();
+        }, { signal: controller.signal });
     }
 }

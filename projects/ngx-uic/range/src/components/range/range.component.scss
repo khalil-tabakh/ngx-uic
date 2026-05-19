@@ -19,6 +19,14 @@ $high: calc(var(--high, 0) * 1%);
     align-items: center;
     user-select: none;
     cursor: pointer;
+
+    &:active {
+        cursor: grabbing;
+
+        .thumb {
+            cursor: grabbing;
+        }
+    }
 }
 
 .track {
