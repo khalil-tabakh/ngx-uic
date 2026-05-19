@@ -61,6 +61,7 @@ export class NgxRangeComponent {
             return;
         }
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
+        const oldLower = this.lower(), oldValue = this.value(), oldUpper = this.upper();
         let oldModel: ModelSignal<number> | undefined = undefined;
         const controller = new AbortController();
         slider.setPointerCapture(event.pointerId);
@@ -72,14 +73,16 @@ export class NgxRangeComponent {
                 else if (oldModel) return oldModel;
                 else return distance(offsetX, thumbs[0].offsetLeft) < distance(offsetX, thumbs[1].offsetLeft) ? this.lower : this.upper;
             })(event.offsetX);
+            const oldStep = newModel();
             const step = (this._max() - this._min()) * clamp(event.offsetX / slider.offsetWidth, 0, 1) + this._min();
             const newStep = closest(step, this._steps());
             newModel.set(newStep);
             oldModel = newModel;
-            this.element.dispatchEvent(new Event('change'));
-            this.element.dispatchEvent(new Event('input'));
+            if (newStep !== oldStep) this.element.dispatchEvent(new Event('input'));
         }, { signal: controller.signal });
         slider.addEventListener('pointerup', () => {
+            const newLower = this.lower(), newValue = this.value(), newUpper = this.upper();
+            if (newLower !== oldLower || newValue !== oldValue || newUpper !== oldUpper) this.element.dispatchEvent(new Event('change'));
             controller.abort();
         }, { signal: controller.signal });
         slider.dispatchEvent(new PointerEvent('pointermove', event));
