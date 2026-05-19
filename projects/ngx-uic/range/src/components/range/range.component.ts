@@ -1,6 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, input, linkedSignal, numberAttribute, output, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, linkedSignal, model, numberAttribute, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
-import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 import { closest } from '../../utils/functions.util';
 import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
@@ -14,11 +13,10 @@ import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttrib
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
+    readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement
+
     readonly type = input<RangeType>('single');
     readonly min = input(0, { transform: numberAttribute });
-    readonly lower = input(25, { transform: numberAttribute });
-    readonly value = input(50, { transform: numberAttribute });
-    readonly upper = input(75, { transform: numberAttribute });
     readonly max = input(100, { transform: numberAttribute });
     readonly origin = input(0, { transform: numberAttribute });
     readonly offset = input(1, { transform: numberAttribute });
@@ -26,8 +24,9 @@ export class NgxRangeComponent {
     readonly splits = input<number[]>([]);
     readonly marks = input<number | number[] | string>();
 
-    readonly change = output<RangeChange>();
-    readonly input = output<number>();
+    readonly lower = model(25);
+    readonly value = model(50);
+    readonly upper = model(75);
 
     readonly segments = viewChildren(NgxSegmentDirective);
     readonly segmentRefs = viewChildren<NgxSegmentDirective, ElementRef<HTMLElement>>(NgxSegmentDirective, { read: ElementRef });
@@ -54,23 +53,17 @@ export class NgxRangeComponent {
         computation: ({ upper, steps }) => closest(upper, steps)
     });
 
-    private emitValue(value: number): void {
-        const event: RangeChange = this.type() === 'single'
-            ? { value: this.highest() }
-            : { lower: this.lowest(), upper: this.highest() };
-        this.change.emit(event);
-        this.input.emit(value);
-    }
-
     private setValue(offsetX: number, thumb: HTMLElement): void {
         let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;
         if (percentage < 0) percentage = 0;
         if (percentage > 100) percentage = 100;
         const mapped = (this._max() - this._min()) * percentage / 100 + this._min();
         const rounded = closest(mapped, this._steps());
-        if (thumb === this.thumbRefs()[0].nativeElement) this.lowest.set(rounded);
-        if (thumb === this.thumbRefs()[1].nativeElement) this.highest.set(rounded);
-        this.emitValue(rounded);
+        if (this.type() === 'single') this.value.set(rounded);
+        else if (thumb === this.thumbRefs()[0].nativeElement) this.lower.set(rounded);
+        else if (thumb === this.thumbRefs()[1].nativeElement) this.upper.set(rounded);
+        this.element.dispatchEvent(new Event('change'));
+        this.element.dispatchEvent(new Event('input'));
     }
 
     protected onSliding(event: PointerEvent): void {

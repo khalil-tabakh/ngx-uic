@@ -134,10 +134,11 @@ export class NgxSeekBarComponent {
         }, { once: true });
     }
 
-    protected onSeek(value: number): void {
-        if (this.player.audio()) this.player.audio()!.currentTime = value;
-        if (this.player.video()) this.player.video()!.currentTime = value;
-        this.currentTime.set(value);
+    protected onSeek(): void {
+        const currentTime = this.range().value();
+        if (this.player.audio()) this.player.audio()!.currentTime = currentTime;
+        if (this.player.video()) this.player.video()!.currentTime = currentTime;
+        this.currentTime.set(currentTime);
     }
 
     protected onSeeking(): void {
