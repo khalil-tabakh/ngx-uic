@@ -10,7 +10,7 @@ import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttrib
     imports: [NgxSegmentDirective],
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onClick($event)' },
+    host: { '(pointerdown)': 'onSliding($event)' },
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgxRangeComponent {
@@ -73,17 +73,14 @@ export class NgxRangeComponent {
         this.emitValue(rounded);
     }
 
-    protected onClick(event: PointerEvent): void {
+    protected onSliding(event: PointerEvent): void {
         event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
-        if (event.target !== slider) slider.dispatchEvent(new PointerEvent('pointerdown', event));
-    }
-
-    protected onSliding(event: PointerEvent): void {
-        if (!event.isTrusted) event.stopPropagation();
-        const slider = this.sliderRef().nativeElement;
+        if (slider !== event.target) {
+            slider.dispatchEvent(new PointerEvent('pointerdown', event));
+            return;
+        }
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
-
         const thumbDistance = (thumb: HTMLElement) => Math.abs(event.offsetX - thumb.offsetLeft);
         let thumb = thumbDistance(thumbs[0]) < thumbDistance(thumbs[1]) ? thumbs[0] : thumbs[1];
         if (event.target === thumbs[0]) thumb = thumbs[0];
