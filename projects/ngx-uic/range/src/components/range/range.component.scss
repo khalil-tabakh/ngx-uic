@@ -92,10 +92,6 @@ $value: calc(var(--value, 0) * 1%);
     &:last-child {
         left: $upper;
     }
-
-    input {
-        display: none !important;
-    }
 }
 
 .mark {

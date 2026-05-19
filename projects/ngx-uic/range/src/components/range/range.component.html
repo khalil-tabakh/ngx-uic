@@ -12,13 +12,13 @@
     @let lower = isDouble ? this.lower() : value();
     @let upper = isDouble ? this.upper() : value();
     <label tabindex="0" class="thumb" [style.--lower]="isDouble ? (lower - min()) / (max() - min()) * 100 : null" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
+        <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
     </label>
     @for (mark of marks(); track $index) {
         @let left = (mark - min()) / (max() - min()) * 100;
         <div class="mark" [class.mark--lower]="mark < lower" [class.mark--upper]="mark > upper" [style.--mark-left]="left"></div>
     }
     <label tabindex="0" class="thumb" [style.--upper]="(upper - min()) / (max() - min()) * 100" #thumbRef>
-        <input type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="upper" />
+        <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="upper" />
     </label>
 </div>
