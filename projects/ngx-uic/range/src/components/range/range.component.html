@@ -22,7 +22,7 @@
         [splits]="_splits()"
     ></div>
 </div>
-<div class="slider" (keydown)="onPressing($event)" (pointerdown)="onSliding($event)" #sliderRef>
+<div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
     @let low = type() === 'simple' ? null : (lowest() - _min()) / (_max() - _min()) * 100;
     <label tabindex="0" class="thumb" [style.--low]="low" #thumbRef>
         <input type="range" [min]="_min()" [max]="_max()" [step]="step().toString()" [value]="lowest()" />

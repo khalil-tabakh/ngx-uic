@@ -3,7 +3,7 @@ import { NgxSegmentDirective } from '../../directives/segment/segment.directive'
 import { RangeChange } from '../../models/range-change.model';
 import { RangeType } from '../../models/range-type.model';
 import { closest } from '../../utils/functions.util';
-import { marksAttribute, maxAttribute, minAttribute, offsetAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
+import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-range',
@@ -43,7 +43,6 @@ export class NgxRangeComponent {
     private _lower = computed(() => valueAttribute(this.type() === 'simple' ? this.min() : this.lower(), this._min(), this._max(), 0));
     private _upper = computed(() => valueAttribute(this.type() === 'simple' ? this.value() : this.upper(), this._min(), this._max(), 100));
     protected _origin = computed(() => valueAttribute(this.origin(), this._min(), this._max(), 0));
-    private _offset = computed(() => offsetAttribute(this.offset(), this._min(), this._max()));
     private _steps = computed(() => stepAttribute(this.step(), this._min(), this._max()));
     protected _splits = computed(() => splitsAttribute(this.splits(), this._min(), this._max()));
 
@@ -81,38 +80,6 @@ export class NgxRangeComponent {
         event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
         if (event.target !== slider) slider.dispatchEvent(new PointerEvent('pointerdown', event));
-    }
-
-    protected onPressing(event: KeyboardEvent): void {
-        if (event.key === 'Tab') return;
-        event.preventDefault();
-        const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
-        const value = event.target === thumbs[0] ? this.lowest : this.highest;
-        const index = this._steps().indexOf(value());
-        switch (event.key) {
-            case 'ArrowDown':
-            case 'ArrowLeft': {
-                const step = index > 0 ? this._steps().at(index - 1) : undefined;
-                const newValue = Math.max(step ?? (value() - this._offset()), this._min());
-                const signal = newValue < this.lowest() ? this.lowest : value;
-                const oldValue = signal();
-                signal.set(newValue);
-                if (newValue !== oldValue) this.emitValue(signal());
-                if (signal !== value) thumbs.find((thumb) => thumb !== event.target)?.focus();
-                break;
-            }
-            case 'ArrowRight':
-            case 'ArrowUp': {
-                const step = index > -1 ? this._steps().at(index + 1) : undefined;
-                const newValue = Math.min(step ?? (value() + this._offset()), this._max());
-                const signal = newValue > this.highest() ? this.highest : value;
-                const oldValue = signal();
-                signal.set(newValue);
-                if (newValue !== oldValue) this.emitValue(signal());
-                if (signal !== value) thumbs.find((thumb) => thumb !== event.target)?.focus();
-                break;
-            }
-        }
     }
 
     protected onSliding(event: PointerEvent): void {

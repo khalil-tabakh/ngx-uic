@@ -21,10 +21,6 @@ export const minAttribute = (value: number, max: number) => {
     return value < max ? value : max - 100;
 };
 
-export const offsetAttribute = (value: number, min: number, max: number) => {
-    return value > 0 && value <= max - min ? value : (max - min) / 100;
-};
-
 export const splitsAttribute = (value: number[], min: number, max: number) => {
     const unique = Array.from(new Set(value));
     const sorted = unique.toSorted((a, b) => a - b);
