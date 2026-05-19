@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, linkedSignal, model, numberAttribute, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, inject, input, linkedSignal, model, numberAttribute, viewChild, viewChildren } from '@angular/core';
 import { NgxSegmentDirective } from '../../directives/segment/segment.directive';
 import { RangeType } from '../../models/range-type.model';
-import { closest } from '../../utils/functions.util';
+import { clamp, closest, distance } from '../../utils/functions.util';
 import { marksAttribute, maxAttribute, minAttribute, splitsAttribute, stepAttribute, valueAttribute } from '../../utils/transforms.util';
 
 @Component({
@@ -53,19 +53,6 @@ export class NgxRangeComponent {
         computation: ({ upper, steps }) => closest(upper, steps)
     });
 
-    private setValue(offsetX: number, thumb: HTMLElement): void {
-        let percentage = offsetX / this.sliderRef().nativeElement.offsetWidth * 100;
-        if (percentage < 0) percentage = 0;
-        if (percentage > 100) percentage = 100;
-        const mapped = (this._max() - this._min()) * percentage / 100 + this._min();
-        const rounded = closest(mapped, this._steps());
-        if (this.type() === 'single') this.value.set(rounded);
-        else if (thumb === this.thumbRefs()[0].nativeElement) this.lower.set(rounded);
-        else if (thumb === this.thumbRefs()[1].nativeElement) this.upper.set(rounded);
-        this.element.dispatchEvent(new Event('change'));
-        this.element.dispatchEvent(new Event('input'));
-    }
-
     protected onSliding(event: PointerEvent): void {
         event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
@@ -74,21 +61,27 @@ export class NgxRangeComponent {
             return;
         }
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
-        const thumbDistance = (thumb: HTMLElement) => Math.abs(event.offsetX - thumb.offsetLeft);
-        let thumb = thumbDistance(thumbs[0]) < thumbDistance(thumbs[1]) ? thumbs[0] : thumbs[1];
-        if (event.target === thumbs[0]) thumb = thumbs[0];
-        if (event.target === thumbs[1] || this.type() === 'single') thumb = thumbs[1];
-        if (event.target === slider) this.setValue(event.offsetX, thumb);
-
+        let oldModel: ModelSignal<number> | undefined = undefined;
         const controller = new AbortController();
         slider.setPointerCapture(event.pointerId);
         slider.addEventListener('pointermove', (event) => {
-            if (event.offsetX < thumbs[0].offsetLeft) thumb = thumbs[0];
-            if (event.offsetX > thumbs[1].offsetLeft || this.type() === 'single') thumb = thumbs[1];
-            this.setValue(event.offsetX, thumb);
+            const newModel = ((offsetX: number) => {
+                if (this.type() === 'single') return this.value;
+                else if (offsetX < thumbs[0].offsetLeft) return this.lower;
+                else if (offsetX > thumbs[1].offsetLeft) return this.upper;
+                else if (oldModel) return oldModel;
+                else return distance(offsetX, thumbs[0].offsetLeft) < distance(offsetX, thumbs[1].offsetLeft) ? this.lower : this.upper;
+            })(event.offsetX);
+            const step = (this._max() - this._min()) * clamp(event.offsetX / slider.offsetWidth, 0, 1) + this._min();
+            const newStep = closest(step, this._steps());
+            newModel.set(newStep);
+            oldModel = newModel;
+            this.element.dispatchEvent(new Event('change'));
+            this.element.dispatchEvent(new Event('input'));
         }, { signal: controller.signal });
         slider.addEventListener('pointerup', () => {
             controller.abort();
         }, { signal: controller.signal });
+        slider.dispatchEvent(new PointerEvent('pointermove', event));
     }
 }
