@@ -5,11 +5,14 @@ import { between, clamp, closest, distance, percentage } from '../../utils/funct
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onSliding($event)' },
-    changeDetection: ChangeDetectionStrategy.OnPush,
+    host: {
+        '(pointerenter)': 'onHovering()',
+        '(pointerdown)': 'onSliding($event)'
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NgxRangeComponent {
-    readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
     readonly type = input<'single' | 'double'>('single');
     readonly min = input(0, { transform: numberAttribute });
@@ -28,6 +31,7 @@ export class NgxRangeComponent {
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
     readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
 
+    readonly hover = signal(NaN);
     readonly segments = signal([]) as Signal<readonly { start: number, end: number }[]>;
 
     readonly marks = computed<readonly number[]>(() => {
@@ -88,16 +92,39 @@ export class NgxRangeComponent {
             (this.segments as WritableSignal<ReturnType<typeof this.segments>>).set(segments);
         },
         write: () => {
+            const hover = this.hover();
             const lower = this.type() === 'single' ? this.min() : this.lower();
             const upper = this.type() === 'single' ? this.value() : this.upper();
+            const value = this.type() === 'single' ? this.value() : distance(hover, lower) < distance(hover, upper) ? lower : upper;
             this.segmentRefs().forEach((segmentRef, index) => {
                 const { start, end } = this.segments()[index];
                 const segment = segmentRef.nativeElement;
+                segment.classList.toggle('segment--hovered', between(hover, start, end));
+                segment.style.setProperty('--hover', `${clamp(percentage(hover, start, end), 0, 100)}`);
                 segment.style.setProperty('--lower', `${clamp(percentage(lower, start, end), 0, 100)}`);
                 segment.style.setProperty('--upper', `${clamp(percentage(upper, start, end), 0, 100)}`);
+                segment.style.setProperty('--value', `${clamp(percentage(value, start, end), 0, 100)}`);
             });
         }
     });
+
+    protected onHovering(): void {
+        const range = this.element;
+        const rangeStyle = getComputedStyle(range);
+        const rangeRect = range.getBoundingClientRect();
+        const rangeLeft = rangeRect.left + parseFloat(rangeStyle.paddingLeft);
+        const rangeRight = rangeRect.right - parseFloat(rangeStyle.paddingRight);
+        const rangeWidth = rangeRight - rangeLeft;
+        const controller = new AbortController();
+        range.addEventListener('pointermove', (event) => {
+            const offsetX = event.clientX - rangeLeft;
+            this.hover.set((this.max() - this.min()) * clamp(offsetX / rangeWidth, 0, 1) + this.min());
+        }, { signal: controller.signal });
+        range.addEventListener('pointerleave', () => {
+            this.hover.set(NaN);
+            controller.abort();
+        }, { signal: controller.signal  });
+    }
 
     protected onSliding(event: PointerEvent): void {
         event.stopPropagation();

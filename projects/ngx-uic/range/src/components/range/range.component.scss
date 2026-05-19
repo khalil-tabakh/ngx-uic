@@ -1,5 +1,7 @@
+$hover: calc(var(--hover, 0) * 1%);
 $lower: calc(var(--lower, 0) * 1%);
 $upper: calc(var(--upper, 0) * 1%);
+$value: calc(var(--value, 0) * 1%);
 
 :host {
     --progress-color: white;
@@ -10,13 +12,10 @@ $upper: calc(var(--upper, 0) * 1%);
 }
 
 :host {
-    box-sizing: content-box;
-    position: relative;
-    display: flex;
+    display: grid;
     height: var(--track-height);
     width: 10rem;
-    justify-content: center;
-    align-items: center;
+    justify-items: center;
     user-select: none;
     cursor: pointer;
 
@@ -27,19 +26,17 @@ $upper: calc(var(--upper, 0) * 1%);
             cursor: grabbing;
         }
     }
+
+    & > * {
+        grid-area: 1 / 1;
+    }
 }
 
 .track {
-    box-sizing: border-box;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
+    position: relative;
     display: flex;
-    align-items: center;
     height: 100%;
     width: 100%;
-    padding: inherit;
     gap: 0.25rem;
 }
 
@@ -49,15 +46,24 @@ $upper: calc(var(--upper, 0) * 1%);
     height: 100%;
     width: calc(var(--segment-width, 100) * 1%);
     background: rgba(255, 255, 255, 0.2);
-    background-clip: content-box;
+
+    &::before {
+        content: "";
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.5);
+        transform: translateX($value) scaleX(calc($hover - $value));
+        transform-origin: left;
+    }
 
     &::after {
         content: "";
+        position: absolute;
+        left: $lower;
         height: 100%;
-        width: 100%;
+        width: calc($upper - $lower);
         background: var(--progress-color);
-        transform: translateX($lower) scaleX(calc($upper - $lower));
-        transform-origin: left;
     }
 }
 

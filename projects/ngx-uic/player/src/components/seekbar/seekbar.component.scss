@@ -23,19 +23,6 @@
             border-top-right-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
             border-bottom-right-radius: calc(var(--track-height) * var(--segment-scale-y)) var(--track-height);
         }
-
-        &::before {
-            content: "";
-            position: absolute;
-            display: flex;
-            height: 100%;
-            width: 100%;
-            opacity: 0;
-            background: var(--hovered-color);
-            transform: scaleX(calc(var(--hovered, 0) * 1%));
-            transform-origin: left;
-            transition: opacity 100ms ease-out;
-        }
     }
 
     .thumb {

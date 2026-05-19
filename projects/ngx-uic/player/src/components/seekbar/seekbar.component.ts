@@ -1,6 +1,6 @@
 import { Component, ViewContainerRef, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { NgxPlayerComponent } from '../player/player.component';
-import { NgxRangeComponent, between, clamp, percentage } from '../../../../range/public-api';
+import { NgxRangeComponent, percentage } from '../../../../range/public-api';
 
 @Component({
     selector: 'ngx-seekbar',
@@ -10,7 +10,6 @@ import { NgxRangeComponent, between, clamp, percentage } from '../../../../range
     host: {
         '(click)': '$event.stopPropagation()',
         '(dblclick)': '$event.stopPropagation()',
-        '(pointerenter)': 'onHovering()',
         '(pointerdown)': 'onSeeking()'
     }
 })
@@ -25,7 +24,6 @@ export class NgxSeekBarComponent {
     private timer$?: NodeJS.Timeout;
 
     readonly buffered = signal<[number, number][]>([]);
-    readonly hovered = signal(0);
 
     readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0);
     readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0);
@@ -78,18 +76,6 @@ export class NgxSeekBarComponent {
             });
         }
     });
-    private renderHovered$ = afterRenderEffect({
-        write: () => {
-            const hovered = this.hovered();
-            const range = this.rangeRef().injector.get(NgxRangeComponent);
-            range.segmentRefs().forEach((segmentRef, index) => {
-                const { start, end } = range.segments()[index];
-                const segment = segmentRef.nativeElement;
-                segment.classList.toggle('segment--hovered', between(hovered, start, end));
-                segment.style.setProperty('--hovered', `${clamp(percentage(hovered, start, end), 0, 100)}`);
-            });
-        }
-    });
 
     private setBuffered(): void {
         clearTimeout(this.timer$);
@@ -104,28 +90,6 @@ export class NgxSeekBarComponent {
             const timeout = Math.ceil((closest - media.currentTime) / 2) * 1000;
             if (timeout > 0 && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
         } else media.addEventListener('timeupdate', () => this.setBuffered(), { once: true }); // Force recheck on next media time update
-    }
-
-    protected onHovering(): void {
-        const range = this.rangeRef().element.nativeElement as HTMLElement;
-        const rangeStyle = getComputedStyle(range);
-        const rangePaddingLeft = parseFloat(rangeStyle.paddingLeft);
-        const rangePaddingRight = parseFloat(rangeStyle.paddingRight);
-        const rangeLeft = range.getBoundingClientRect().left
-        const rangeWidth = range.clientWidth - (rangePaddingLeft + rangePaddingRight);
-
-        const onPointerMove = (event: PointerEvent) => {
-            const offsetX = event.clientX - rangeLeft;
-            let percentage = ((offsetX - rangePaddingLeft) / rangeWidth) * 100;
-            if (percentage < 0) percentage = 0;
-            if (percentage > 100) percentage = 100;
-            this.hovered.set(this.duration() * percentage / 100);
-        };
-        range.addEventListener('pointermove', onPointerMove);
-        range.addEventListener('pointerleave', () => {
-            range.removeEventListener('pointermove', onPointerMove);
-            this.hovered.set(-1);
-        }, { once: true });
     }
 
     protected onSeek(): void {
