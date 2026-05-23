@@ -99,7 +99,10 @@ export class NgxRangeComponent {
             this.segmentRefs().forEach((segmentRef, index) => {
                 const { start, end } = this.segments()[index];
                 const segment = segmentRef.nativeElement;
-                segment.classList.toggle('segment--hovered', between(hover, start, end));
+                segment.classList.toggle('segment--hover', between(this.hover(), start, end));
+                segment.classList.toggle('segment--lower', between(this.lower(), start, end));
+                segment.classList.toggle('segment--upper', between(this.upper(), start, end));
+                segment.classList.toggle('segment--value', between(this.value(), start, end));
                 segment.style.setProperty('--hover', `${clamp(percentage(hover, start, end), 0, 100)}`);
                 segment.style.setProperty('--lower', `${clamp(percentage(lower, start, end), 0, 100)}`);
                 segment.style.setProperty('--upper', `${clamp(percentage(upper, start, end), 0, 100)}`);
