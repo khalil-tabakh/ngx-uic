@@ -1,11 +1,17 @@
 :host {
+    --buffered-color: rgba(255, 255, 255, 0.5); /* Used in the directive TS file */
     width: 100%;
 }
 
 :host ::ng-deep ngx-range {
-    --progress-color: red;
-    width: calc(100% - 1rem);
-    padding: 1.5rem 0.5rem 0 0.5rem;
+    --track-height: 0.25rem;
+    --thumb-height: 0.75rem;
+    width: 100%;
+    padding: 1.5rem 1rem 0 1rem;
+
+    .track {
+        height: var(--track-height);
+    }
 
     .segment {
         --segment-scale-y: 1;
