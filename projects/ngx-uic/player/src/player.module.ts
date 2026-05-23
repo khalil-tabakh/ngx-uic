@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { NgxPlayerComponent } from './components/player/player.component';
-import { NgxSeekBarComponent } from './components/seekbar/seekbar.component';
+import { NgxSeekBarDirective } from './directives/seekbar/seekbar.directive';
 import { NgxBitrateDirective } from './directives/bitrate/bitrate.directive';
 import { NgxCaptionDirective } from './directives/caption/caption.directive';
 import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.directive';
@@ -18,7 +18,7 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
 @NgModule({
     imports: [
         NgxPlayerComponent,
-        NgxSeekBarComponent,
+        NgxSeekBarDirective,
         NgxBitrateDirective,
         NgxCaptionDirective,
         NgxFullscreenDirective,
@@ -35,7 +35,7 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
     ],
     exports: [
         NgxPlayerComponent,
-        NgxSeekBarComponent,
+        NgxSeekBarDirective,
         NgxBitrateDirective,
         NgxCaptionDirective,
         NgxFullscreenDirective,

@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NgxSeekBarComponent } from './seekbar.component';
+import { NgxSeekBarDirective } from './seekbar.directive';
 
-describe('NgxSeekBarComponent', () => {
-    let component: NgxSeekBarComponent;
-    let fixture: ComponentFixture<NgxSeekBarComponent>;
+describe('NgxSeekBarDirective', () => {
+    let component: NgxSeekBarDirective;
+    let fixture: ComponentFixture<NgxSeekBarDirective>;
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [NgxSeekBarComponent]
+            imports: [NgxSeekBarDirective]
         }).compileComponents();
 
-        fixture = TestBed.createComponent(NgxSeekBarComponent);
+        fixture = TestBed.createComponent(NgxSeekBarDirective);
         component = fixture.componentInstance;
         fixture.detectChanges();
     });

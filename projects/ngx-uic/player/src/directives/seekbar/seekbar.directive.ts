@@ -1,32 +1,28 @@
-import { Component, ViewContainerRef, afterRenderEffect, effect, inject, input, linkedSignal, signal, viewChild } from '@angular/core';
-import { NgxPlayerComponent } from '../player/player.component';
+import { Directive, ElementRef, Signal, WritableSignal, afterRenderEffect, effect, inject, linkedSignal, signal } from '@angular/core';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 import { NgxRangeComponent, percentage } from '../../../../range/public-api';
 
-@Component({
-    selector: 'ngx-seekbar',
-    imports: [NgxRangeComponent],
-    templateUrl: './seekbar.component.html',
-    styleUrl: './seekbar.component.scss',
+@Directive({
+    selector: 'ngx-range[ngxSeekbar]',
     host: {
         '(click)': '$event.stopPropagation()',
         '(dblclick)': '$event.stopPropagation()',
+        '(input)': 'onSeek()',
         '(pointerdown)': 'onSeeking()'
-    }
+    },
+    exportAs: 'ngxSeekbar'
 })
-export class NgxSeekBarComponent {
+export class NgxSeekBarDirective {
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private player = inject(NgxPlayerComponent);
+    private range = inject(NgxRangeComponent);
 
-    readonly marks = input<number[]>([]);
-    readonly splits = input<number[]>([]);
-
-    readonly rangeRef = viewChild.required(NgxRangeComponent, { read: ViewContainerRef });
-
-    private timer$?: NodeJS.Timeout;
+    private timer$?: ReturnType<typeof setTimeout>;
 
     readonly buffered = signal<[number, number][]>([]);
 
-    readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0);
-    readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0);
+    readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0) as Signal<number>;
+    readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0) as Signal<number>;
 
     private buffered$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
@@ -40,41 +36,38 @@ export class NgxSeekBarComponent {
     private currentTime$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const onTimeupdate = () => this.currentTime.set(media.currentTime);
+        const onTimeupdate = () => (this.currentTime as WritableSignal<number>).set(media.currentTime);
         media.addEventListener('timeupdate', onTimeupdate);
         onCleanup(() => media.removeEventListener('timeupdate', onTimeupdate));
     });
     private duration$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const onDurationchange = () => this.duration.set(media.duration);
+        const onDurationchange = () => (this.duration as WritableSignal<number>).set(media.duration);
         media.addEventListener('durationchange', onDurationchange);
         onCleanup(() => media.removeEventListener('durationchange', onDurationchange));
     });
 
     private renderBuffered$ = afterRenderEffect({
-        write: () => {
-            const range = this.rangeRef().injector.get(NgxRangeComponent);
-            range.segmentRefs().forEach((segmentRef, index) => {
-                const { start, end } = range.segments()[index];
-                const gradient = this.buffered()
-                    .filter((buffer) => buffer[0] < end && buffer[1] > start)
-                    .flatMap((buffer) => [
-                        percentage(Math.max(buffer[0], start), start, end),
-                        percentage(Math.min(buffer[1], end), start, end)
-                    ])
-                    .reduce((colors, stop, index) => {
-                        if (stop === 100) return colors;
-                        if (index % 2 === 0) colors.push(`transparent ${stop}%`);
-                        colors.push(`var(--buffered-color) ${stop}%`);
-                        if (index % 2 !== 0) colors.push(`transparent ${stop}%`);
-                        return colors;
-                    }, [] as string[])
-                    .join(', ');
-                const segment = segmentRef.nativeElement;
-                segment.style.setProperty('--buffered', `${gradient}`);
-            });
-        }
+        write: () => this.range.segmentRefs().forEach((segmentRef, index) => {
+            const { start, end } = this.range.segments()[index];
+            const gradient = this.buffered()
+                .filter((buffer) => buffer[0] < end && buffer[1] > start)
+                .flatMap((buffer) => [
+                    percentage(Math.max(buffer[0], start), start, end),
+                    percentage(Math.min(buffer[1], end), start, end)
+                ])
+                .reduce((colors, stop, index) => {
+                    if (stop === 100) return colors;
+                    if (index % 2 === 0) colors.push(`transparent ${stop}%`);
+                    colors.push(`var(--buffered-color, rgba(255, 255, 255, 0.5)) ${stop}%`);
+                    if (index % 2 !== 0) colors.push(`transparent ${stop}%`);
+                    return colors;
+                }, [] as string[])
+                .join(', ');
+            const segment = segmentRef.nativeElement;
+            segment.style.setProperty('--buffered', `${gradient}`);
+        })
     });
 
     private setBuffered(): void {
@@ -93,19 +86,18 @@ export class NgxSeekBarComponent {
     }
 
     protected onSeek(): void {
-        const currentTime = this.rangeRef().injector.get(NgxRangeComponent).value();
+        const currentTime = this.range.value();
         if (this.player.audio()) this.player.audio()!.currentTime = currentTime;
         if (this.player.video()) this.player.video()!.currentTime = currentTime;
-        this.currentTime.set(currentTime);
+        (this.currentTime as WritableSignal<number>).set(currentTime);
     }
 
     protected onSeeking(): void {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
-        const range = this.rangeRef().element.nativeElement as HTMLElement;
         const paused = media.paused;
         if (!!media.networkState) media.pause();
-        range.addEventListener('pointerup', () => {
+        this.element.addEventListener('pointerup', () => {
             if (!!media.networkState) paused ? media.pause() : media.play().catch(() => {});
         }, { once: true });
     }
