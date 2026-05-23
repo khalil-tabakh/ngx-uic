@@ -3,17 +3,11 @@ $lower: calc(var(--lower, 0) * 1%);
 $upper: calc(var(--upper, 0) * 1%);
 $value: calc(var(--value, 0) * 1%);
 
-:host {
-    --progress-color: white;
-    --track-height: 0.25rem;
-    --thumb-height: calc(var(--track-height) * 3);
-    --thumb-width: var(--thumb-height);
-    --mark-color: gray;
-}
+$thumb-height: var(--thumb-height, 1.25rem);
+$thumb-width: var(--thumb-width, $thumb-height);
 
 :host {
     display: grid;
-    height: var(--track-height);
     width: 10rem;
     justify-items: center;
     user-select: none;
@@ -35,24 +29,24 @@ $value: calc(var(--value, 0) * 1%);
 .track {
     position: relative;
     display: flex;
-    height: 100%;
     width: 100%;
+    height: 0.5rem;
     gap: 0.25rem;
 }
 
 .segment {
     position: relative;
     display: flex;
-    height: 100%;
     width: calc(var(--segment-width, 100) * 1%);
-    background: rgba(255, 255, 255, 0.2);
+    height: 100%;
+    background: var(--segment-color, rgba(255, 255, 255, 0.2));
 
     &::before {
         content: "";
         position: absolute;
-        height: 100%;
         width: 100%;
-        background: rgba(255, 255, 255, 0.5);
+        height: 100%;
+        background: var(--hover-color, rgba(255, 255, 255, 0.5));
         transform: translateX($value) scaleX(calc($hover - $value));
         transform-origin: left;
     }
@@ -61,26 +55,29 @@ $value: calc(var(--value, 0) * 1%);
         content: "";
         position: absolute;
         left: $lower;
-        height: 100%;
         width: calc($upper - $lower);
-        background: var(--progress-color);
+        height: 100%;
+        background: var(--progress-color, white);
     }
 }
 
 .slider {
     position: relative;
+    display: flex;
+    width: calc(100% - $thumb-width);
     height: 100%;
-    width: calc(100% - var(--thumb-width));
+    align-items: center;
+    isolation: isolate;
 }
 
 .thumb {
     position: absolute;
-    top: 50%;
-    translate: -50% -50%;
-    height: var(--thumb-height);
-    width: var(--thumb-width);
-    border-radius: var(--thumb-width);
-    background: var(--progress-color);
+    z-index: 1;
+    translate: -50% 0;
+    width: $thumb-width;
+    height: $thumb-height;
+    border-radius: $thumb-width;
+    background: var(--thumb-color, var(--progress-color, white));
     box-shadow: 0 0 0.5em -0.25rem black;
     cursor: grab;
 
@@ -96,19 +93,10 @@ $value: calc(var(--value, 0) * 1%);
 
 .mark {
     position: absolute;
-    top: 50%;
     left: calc(var(--mark-left) * 1%);
-    translate: -50% -50%;
-    height: calc(100% / 3);
+    translate: -50% 0;
+    height: 25%;
     aspect-ratio: 1;
     border-radius: 50%;
-    background: var(--mark-color);
-
-    &--lower {
-        background: var(--mark-color-lower, var(--mark-color));
-    }
-
-    &--upper {
-        background: var(--mark-color-upper, var(--mark-color));
-    }
+    background: var(--mark-color, gray);
 }
