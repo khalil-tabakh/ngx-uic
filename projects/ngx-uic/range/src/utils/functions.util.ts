@@ -1,6 +1,4 @@
-export const between = (value: number, min: number, max: number, strict = false) => strict
-    ? value > min && value < max
-    : value >= min && value <= max;
+export const between = (value: number, min: number, max: number) => value >= min && value <= max;
 
 export const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 

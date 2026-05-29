@@ -45,7 +45,7 @@ export class NgxRangeComponent {
         const min = this.min(), max = this.max(), split = this.split();
         if (min >= max) return [];
         return Array.isArray(split)
-            ? new Set(split).values().toArray().toSorted((a, b) => a - b).filter((split) => between(split, min, max, true))
+            ? new Set(split).values().toArray().toSorted((a, b) => a - b).filter((split) => between(split, min, max))
             : new Array(+split ? Math.floor((max - min) / +split) + 1 : 0).fill(0).map((_, index) => +split * index + min);
     });
     readonly steps = computed<readonly number[]>(() => {
@@ -80,6 +80,7 @@ export class NgxRangeComponent {
 
     private renderSegments$ = afterRenderEffect({
         earlyRead: () => {
+            this.splits();
             const track = this.trackRef().nativeElement;
             const segments = this.segmentRefs().map((segmentRef) => {
                 const segment = segmentRef.nativeElement;
