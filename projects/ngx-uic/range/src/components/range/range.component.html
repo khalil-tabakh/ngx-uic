@@ -1,6 +1,6 @@
 <div class="track" #trackRef>
     @let segments = [min(), ...splits(), max()];
-    @for (start of segments; track $index) {
+    @for (start of segments; track start) {
         @if (!$last) {
             @let end = segments[$index + 1];
             <div class="segment" [style.--segment-width]="(end - start) / (max() - min()) * 100" #segmentRef></div>
@@ -11,10 +11,12 @@
     @let isDouble = type() === 'double';
     @let lower = isDouble ? this.lower() : value();
     @let upper = isDouble ? this.upper() : value();
-    <label tabindex="0" class="thumb" [style.--lower]="isDouble ? (lower - min()) / (max() - min()) * 100 : null" #thumbRef>
-        <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
-    </label>
-    @for (mark of marks(); track $index) {
+    @if (isDouble) {
+        <label tabindex="0" class="thumb" [style.--lower]="(lower - min()) / (max() - min()) * 100" #thumbRef>
+            <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
+        </label>
+    }
+    @for (mark of marks(); track mark) {
         @let left = (mark - min()) / (max() - min()) * 100;
         <div class="mark" [class.mark--lower]="mark < lower" [class.mark--upper]="mark > upper" [style.--mark-left]="left"></div>
     }

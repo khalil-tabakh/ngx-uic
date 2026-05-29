@@ -83,7 +83,6 @@ $thumb-width: var(--thumb-width, $thumb-height);
     cursor: grab;
 
     &:first-child {
-        display: var(--lower, none);
         left: $lower;
     }
 
