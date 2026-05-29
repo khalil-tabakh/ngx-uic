@@ -127,16 +127,15 @@ export class NgxRangeComponent {
         range.addEventListener('pointerleave', () => {
             this.hover.set(NaN);
             controller.abort();
-        }, { signal: controller.signal  });
+        }, { signal: controller.signal });
     }
 
     protected onSliding(event: PointerEvent): void {
-        event.stopPropagation();
         const slider = this.sliderRef().nativeElement;
         if (slider !== event.target) {
             slider.dispatchEvent(new PointerEvent('pointerdown', event));
             return;
-        }
+        } else event.stopPropagation(); // Prevent infinite event propagation loop
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
         const oldLower = this.lower(), oldValue = this.value(), oldUpper = this.upper();
         let oldModel: ModelSignal<number> | undefined = undefined;
