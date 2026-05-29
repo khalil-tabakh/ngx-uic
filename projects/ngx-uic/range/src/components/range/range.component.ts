@@ -20,7 +20,7 @@ export class NgxRangeComponent {
     readonly step = input<readonly number[] | number | string>(1);
     readonly mark = input<readonly number[] | number | string>([]);
     readonly split = input<readonly number[] | number | string>([]);
-    readonly relative = input<number>(undefined, { transform: numberAttribute });
+    readonly relative = input(undefined, { transform: numberAttribute });
 
     readonly lower = model(25);
     readonly value = model(50);
@@ -94,7 +94,7 @@ export class NgxRangeComponent {
         },
         write: () => {
             const hover = this.hover();
-            const lower = this.type() === 'single' ? this.min() : this.lower();
+            const lower = this.type() === 'single' ? this.origin() : this.lower();
             const upper = this.type() === 'single' ? this.value() : this.upper();
             const value = this.type() === 'single' ? this.value() : distance(hover, lower) < distance(hover, upper) ? lower : upper;
             this.segmentRefs().forEach((segmentRef, index) => {
