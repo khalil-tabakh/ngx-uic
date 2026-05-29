@@ -31,7 +31,7 @@ export class NgxRangeComponent {
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
     readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
 
-    readonly hover = signal(NaN);
+    readonly hover = signal(NaN) as Signal<number>;
     readonly segments = signal([]) as Signal<readonly { start: number, end: number }[]>;
 
     readonly marks = computed<readonly number[]>(() => {
@@ -122,10 +122,10 @@ export class NgxRangeComponent {
         const controller = new AbortController();
         range.addEventListener('pointermove', (event) => {
             const offsetX = event.clientX - rangeLeft;
-            this.hover.set((this.max() - this.min()) * clamp(offsetX / rangeWidth, 0, 1) + this.min());
+            (this.hover as WritableSignal<number>).set((this.max() - this.min()) * clamp(offsetX / rangeWidth, 0, 1) + this.min());
         }, { signal: controller.signal });
         range.addEventListener('pointerleave', () => {
-            this.hover.set(NaN);
+            (this.hover as WritableSignal<number>).set(NaN);
             controller.abort();
         }, { signal: controller.signal });
     }
