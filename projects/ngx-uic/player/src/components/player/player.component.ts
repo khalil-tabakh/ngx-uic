@@ -4,10 +4,8 @@ import Hls, { HlsConfig } from 'hls.js';
 
 @Component({
     selector: 'ngx-player',
-    imports: [],
     templateUrl: './player.component.html',
-    styleUrl: './player.component.scss',
-    host: { 'tabindex': '0' }
+    styleUrl: './player.component.scss'
 })
 export class NgxPlayerComponent {
     readonly audioDashConfig = input<MediaPlayerSettingClass>({});
