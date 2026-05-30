@@ -33,12 +33,12 @@ export class NgxResolutionDirective {
                         const hls = new Hls();
                         hls.attachMedia(video);
                         hls.loadSource(source.src);
-                        hls.on(Hls.Events.ERROR, (_, event) => {
-                            if (!event.fatal) return;
+                        hls.on(Hls.Events.ERROR, (_, data) => {
+                            if (!data.fatal) return;
                             hls.destroy();
                             return reject(source);
                         });
-                        hls.on(Hls.Events.INIT_PTS_FOUND, () => {
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
                             const resolutions = hls.levels.map((level) => this.getHLSResolution(hls, level));
                             source.dataset['resolution'] = new Set(resolutions).values().toArray().toString();
                             hls.destroy();
@@ -66,6 +66,8 @@ export class NgxResolutionDirective {
                         video.onerror = () => reject(source);
                         video.onloadedmetadata = () => {
                             const resolution = this.toResolution(video.videoHeight, video.videoWidth);
+                            video.removeAttribute('src');
+                            video.load();
                             source.dataset['resolution'] = String(resolution);
                             return resolve(source);
                         };
@@ -205,12 +207,12 @@ export class NgxResolutionDirective {
                 break;
         }
     }
-    
+
     private getDashResolution(dash?: MediaPlayerClass, representation?: Representation): number {
         representation ||= dash?.getCurrentRepresentationForType('video') ?? undefined;
         return dash && representation ? this.toResolution(representation.height, representation.width) : this.resolution();
     }
-    
+
     private getHLSResolution(hls?: Hls, level?: Level): number {
         level ||= hls?.levels.at(hls.currentLevel);
         return hls && level ? parseInt(level.name) || this.toResolution(level.height, level.width) : this.resolution();

@@ -69,6 +69,8 @@ export class NgxBitrateDirective {
                             const bytes = Number(response.headers.get('content-length')) || 0;
                             const kbps = Math.round(bytes * 8 / 1024 / audio.duration);
                             const bitrate = this.toBitrate(kbps);
+                            audio.removeAttribute('src');
+                            audio.load();
                             source.dataset['bitrate'] = String(bitrate);
                             return bitrate ? resolve(source) : reject(source);
                         });
@@ -272,7 +274,7 @@ export class NgxBitrateDirective {
         representation ||= dash?.getCurrentRepresentationForType('audio') ?? undefined;
         return representation ? this.toBitrate(representation.bitrateInKbit) : this.bitrate();
     }
-    
+
     private getHLSBitrate(hls?: Hls, track?: MediaPlaylist): number {
         track ||= hls?.audioTracks.at(hls.audioTrack);
         return track ? this.toBitrate(Math.round(track.bitrate / 1024)) : this.bitrate();
