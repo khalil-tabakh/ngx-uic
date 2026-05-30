@@ -1,4 +1,5 @@
-import { DOCUMENT, Directive, ElementRef, afterRenderEffect, inject, signal } from '@angular/core';
+import { DOCUMENT, Directive, effect, inject, signal } from '@angular/core';
+import { NgxPlayerComponent } from '../../../public-api';
 
 @Directive({
     selector: '[ngxFullscreen]',
@@ -11,16 +12,11 @@ import { DOCUMENT, Directive, ElementRef, afterRenderEffect, inject, signal } fr
 })
 export class NgxFullscreenDirective {
     protected document = inject(DOCUMENT);
-    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    private player = inject(NgxPlayerComponent);
 
     readonly fullscreen = signal(!!this.document.fullscreenElement);
 
-    private toggle$ = afterRenderEffect({
-        earlyRead: () => this.element.closest<HTMLElement>('ngx-player'),
-        mixedReadWrite: (player) => {
-            this.fullscreen()
-                ? !this.document.fullscreenElement && player()?.requestFullscreen()
-                : this.document.fullscreenElement && this.document.exitFullscreen();
-        }
-    });
+    private toggle$ = effect(() => this.fullscreen()
+        ? !this.document.fullscreenElement && this.player.element.requestFullscreen()
+        : this.document.fullscreenElement && this.document.exitFullscreen());
 }

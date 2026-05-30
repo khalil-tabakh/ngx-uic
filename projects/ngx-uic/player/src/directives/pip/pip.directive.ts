@@ -15,10 +15,9 @@ export class NgxPipDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
-    readonly pip = signal(false);
+    readonly pip = signal(!!this.document.pictureInPictureElement);
 
-    private pip$ = effect(() => {
-        if (this.pip()) this.player.video()?.requestPictureInPicture?.();
-        else if (this.document.pictureInPictureElement) this.document.exitPictureInPicture();
-    });
+    private toggle$ = effect(() => this.pip()
+        ? !this.document.pictureInPictureElement && this.player.video()?.requestPictureInPicture?.()
+        : this.document.pictureInPictureElement && this.document.exitPictureInPicture());
 }
