@@ -1,6 +1,8 @@
-import { Directive, ElementRef, Signal, WritableSignal, afterRenderEffect, effect, inject, linkedSignal, signal } from '@angular/core';
+import { DOCUMENT, Directive, ElementRef, Signal, WritableSignal, afterRenderEffect, booleanAttribute, effect, inject, input, linkedSignal, resource, signal, untracked } from '@angular/core';
+import { MediaPlayer } from 'dashjs';
+import Hls from 'hls.js';
 import { NgxPlayerComponent } from '../../components/player/player.component';
-import { NgxRangeComponent, percentage } from '../../../../range/public-api';
+import { NgxRangeComponent, between, percentage } from '../../../../range/public-api';
 
 @Directive({
     selector: 'ngx-range[ngxSeekbar]',
@@ -13,9 +15,13 @@ import { NgxRangeComponent, percentage } from '../../../../range/public-api';
     exportAs: 'ngxSeekbar'
 })
 export class NgxSeekBarDirective {
+    private document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private player = inject(NgxPlayerComponent);
     private range = inject(NgxRangeComponent);
+
+    readonly regenerate = input(false, { transform: booleanAttribute });
+    readonly thumbnail = input<readonly number[] | number | string>([]);
 
     private timer$?: ReturnType<typeof setTimeout>;
 
@@ -23,6 +29,86 @@ export class NgxSeekBarDirective {
 
     readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0) as Signal<number>;
     readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0) as Signal<number>;
+
+    readonly thumbnails = resource({
+        defaultValue: new Map<number, string | null | undefined>(),
+        params: () => ({
+            duration: this.duration(),
+            source: this.regenerate() ? this.player.videoSource() : untracked(this.player.videoSource),
+            thumbnail: this.thumbnail(),
+            video: this.player.video()
+        }),
+        stream: async ({ abortSignal, params }) => {
+            const { duration, source, thumbnail, video } = params;
+            const timestamps: readonly number[] = Array.isArray(thumbnail)
+                ? new Set(thumbnail).values().toArray().toSorted((a, b) => a - b).filter((mark) => between(mark, 0, duration))
+                : new Array(+thumbnail ? Math.floor(duration / +thumbnail) + 1 : 0).fill(0).map((_, index) => +thumbnail * index);
+            const response = signal({ value: new Map() as ReadonlyMap<number, string | null | undefined> });
+            response.set({ value: new Map(timestamps.map((timestamp) => [timestamp, source ? undefined : null])) });
+            if (!duration || !source || !timestamps.length || !video) return response;
+            const setImage = (video: HTMLVideoElement, timestamp: number) => {
+                const canvas = new OffscreenCanvas(video.videoWidth, video.videoHeight);
+                canvas.getContext('2d')?.drawImage(video, 0, 0);
+                canvas.convertToBlob({ type: 'image/jpeg' })
+                    .then((blob) => response.update(({ value }) => ({ value: new Map(value).set(timestamp, URL.createObjectURL(blob)) })))
+                    .catch(() => response.update(({ value }) => ({ value: new Map(value).set(timestamp, null) })));
+            };
+            timestamps.forEach((timestamp) => {
+                const video = this.document.createElement('video');
+                switch (source.src.split('?')[0].split('.').at(-1)) {
+                    case 'm3u8':
+                        const hls = new Hls({ startLevel: 0, startPosition: timestamp });
+                        hls.attachMedia(video);
+                        hls.loadSource(source.src);
+                        hls.on(Hls.Events.ERROR, (_, data) => {
+                            if (!data.fatal) return;
+                            response.update(({ value }) => ({ value: new Map(value).set(timestamp, null) }));
+                            hls.destroy();
+                        });
+                        video.onloadedmetadata = () => video.currentTime = timestamp;
+                        video.onseeked = () => {
+                            setImage(video, timestamp);
+                            hls.destroy();
+                        };
+                        break;
+                    case 'mpd':
+                        const dash = MediaPlayer().create();
+                        dash.initialize(video, source.src, false, timestamp);
+                        dash.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: false } } } });
+                        dash.on('error', () => {
+                            response.update(({ value }) => ({ value: new Map(value).set(timestamp, null) }));
+                            dash.destroy();
+                        });
+                        video.onloadedmetadata = () => {
+                            video.currentTime = timestamp;
+                            dash.setRepresentationForTypeById('video', dash.getRepresentationsByType('video')[0].id, true);
+                        };
+                        video.onseeked = () => {
+                            setImage(video, timestamp);
+                            dash.destroy();
+                        };
+                        break;
+                    default:
+                        video.preload = 'metadata';
+                        video.src = source.src;
+                        video.onerror = () => {
+                            response.update(({ value }) => ({ value: new Map(value).set(timestamp, null) }));
+                            video.removeAttribute('src');
+                            video.load();
+                        };
+                        video.onloadedmetadata = () => video.currentTime = timestamp;
+                        video.onseeked = () => {
+                            setImage(video, timestamp);
+                            video.removeAttribute('src');
+                            video.load();
+                        };
+                        break;
+                }
+            });
+            abortSignal.addEventListener('abort', () => response().value.forEach((src) => src && URL.revokeObjectURL(src)), { once: true });
+            return response;
+        }
+    }).asReadonly();
 
     private buffered$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
