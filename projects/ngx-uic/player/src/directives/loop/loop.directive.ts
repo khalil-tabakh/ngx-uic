@@ -25,15 +25,12 @@ export class NgxLoopDirective {
         onCleanup(() => mutation$.disconnect());
     });
     private toggle$ = effect(() => {
-        if (this.player.audio()) this.player.audio()!.loop = this.loop();
-        if (this.player.video()) this.player.video()!.loop = this.loop();
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media || !this.loop()) return;
         const audio = this.player.audio();
-        const audioEnded = audio?.ended || audio?.currentTime === audio?.duration;
-        if (!!audio?.networkState && audioEnded) audio.play().catch(() => {});
         const video = this.player.video();
-        const videoEnded = video?.ended || video?.currentTime === video?.duration;
-        if (!!video?.networkState && videoEnded) video.play().catch(() => {});
+        if (audio) audio.loop = this.loop();
+        if (video) video.loop = this.loop();
+        if (!this.loop()) return;
+        if (!!audio?.networkState && audio.ended) audio.play().catch(() => {});
+        if (!!video?.networkState && video.ended) video.play().catch(() => {});
     });
 }

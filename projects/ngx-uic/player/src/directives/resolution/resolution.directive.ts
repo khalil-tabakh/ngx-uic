@@ -125,10 +125,10 @@ export class NgxResolutionDirective {
     });
 
     private auto$ = effect((onCleanup) => {
-        const dash = this.player.videoDash();
+        const dash = this.player.videoDash.value();
         const onDynamicToStatic = () => this.auto.set(dash?.getSettings().streaming?.abr?.autoSwitchBitrate?.video ?? true);
         dash?.on('dynamicToStatic', onDynamicToStatic);
-        const hls = this.player.videoHLS();
+        const hls = this.player.videoHLS.value();
         const onHlsLevelSwitched = () => this.auto.set(hls?.autoLevelEnabled ?? true);
         hls?.on(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
         onCleanup(() => {
@@ -154,10 +154,10 @@ export class NgxResolutionDirective {
             }
         };
         video.addEventListener('loadedmetadata', onLoadedmetadata);
-        const dash = this.player.videoDash();
+        const dash = this.player.videoDash.value();
         const onQualityChangeRequested = () => this.resolution.set(this.getDashResolution(dash));
         dash?.on('qualityChangeRequested', onQualityChangeRequested);
-        const hls = this.player.videoHLS();
+        const hls = this.player.videoHLS.value();
         const onHlsLevelSwitched = () => this.resolution.set(this.getHLSResolution(hls));
         hls?.on(Hls.Events.LEVEL_SWITCHED, onHlsLevelSwitched);
         onCleanup(() => {
@@ -171,12 +171,12 @@ export class NgxResolutionDirective {
         if (this.sources.isLoading()) return;
         const resolution = this.resolution() ? String(this.resolution()) : '';
         const video = this.player.video();
-        if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash), untracked(this.player.videoHLS));
+        if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash.value), untracked(this.player.videoHLS.value));
     });
     private toggle$ = effect(() => {
-        const dash = this.player.videoDash();
+        const dash = this.player.videoDash.value();
         if (dash) dash.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: this.auto() } } } });
-        const hls = this.player.videoHLS();
+        const hls = this.player.videoHLS.value();
         if (hls && this.auto()) hls.currentLevel = -1;
     });
 

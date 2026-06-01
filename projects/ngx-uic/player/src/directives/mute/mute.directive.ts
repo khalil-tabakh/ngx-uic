@@ -31,8 +31,8 @@ export class NgxMuteDirective {
     });
     private toggle$ = effect(() => {
         const audio = this.player.audio();
-        if (audio) audio.muted = this.muted();
         const video = this.player.video();
+        if (audio) audio.muted = this.muted();
         if (video) video.muted = this.muted() || !!this.player.audioSource();
     });
 }

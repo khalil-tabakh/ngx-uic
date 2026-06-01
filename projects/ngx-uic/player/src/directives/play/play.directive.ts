@@ -1,4 +1,4 @@
-import { Directive, effect, inject, linkedSignal } from '@angular/core';
+import { Directive, effect, inject, linkedSignal, resource, signal } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,25 +12,24 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxPlayDirective {
     private player = inject(NgxPlayerComponent);
 
-    readonly ended = linkedSignal({
-        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
-        computation: ({ audio, video }) => video?.ended ?? audio?.ended ?? false
-    });
+    readonly ended = resource<boolean, HTMLMediaElement | undefined>({
+        defaultValue: false,
+        params: () => this.player.video() || this.player.audio(),
+        stream: async ({ abortSignal, params: media }) => {
+            const response = signal({ value: media.ended });
+            media.addEventListener('canplay', () => response.set({ value: false }), { signal: abortSignal });
+            media.addEventListener('ended', () => response.set({ value: true }), { signal: abortSignal });
+            return response;
+        }
+    }).asReadonly();
+
     readonly paused = linkedSignal(() => this.player.video()?.paused ?? this.player.audio()?.paused ?? true);
 
-    private ended$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media) return;
-        const controller = new AbortController();
-        media.addEventListener('canplay', () => this.ended.set(false), { signal: controller.signal });
-        media.addEventListener('ended', () => this.ended.set(true), { signal: controller.signal });
-        onCleanup(() => controller.abort());
-    });
     private paused$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const controller = new AbortController();
-        media.addEventListener('pause', () => this.paused.set(!this.player.isLoading()), { signal: controller.signal });
+        media.addEventListener('pause', () => this.paused.set(!this.player.isLoading.value()), { signal: controller.signal });
         media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -38,7 +37,7 @@ export class NgxPlayDirective {
     private toggle$ = effect(() => {
         const audio = this.player.audio();
         const video = this.player.video();
-        if (this.player.isLoading()) {
+        if (this.player.isLoading.value()) {
             if (!!audio?.networkState) audio.pause();
             if (!!video?.networkState) video.pause();
             return;

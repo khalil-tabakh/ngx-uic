@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, contentChild, effect, inject, input, linkedSignal, signal } from '@angular/core';
-import { MediaPlayer, MediaPlayerClass, MediaPlayerSettingClass } from 'dashjs';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, contentChild, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
+import { MediaPlayer, MediaPlayerSettingClass } from 'dashjs';
 import Hls, { HlsConfig } from 'hls.js';
 
 @Component({
@@ -36,59 +36,77 @@ export class NgxPlayerComponent {
         computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
     });
 
-    readonly audioDash = linkedSignal<HTMLSourceElement | undefined, MediaPlayerClass | undefined>({
-        source: this.audioSource,
-        computation: (source, previous) => {
-            previous?.value?.destroy();
+    readonly audioDash = resource({
+        params: () => ({ config: this.audioDashConfig(), media: this.audio(), source: this.audioSource() }),
+        loader: async ({ abortSignal, params }) => {
+            const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
             const dash = MediaPlayer().create();
-            dash.initialize(this.audio(), source.src, this.audio()?.autoplay);
-            dash.updateSettings(this.audioDashConfig());
+            dash.initialize(media, source.src, media?.autoplay);
+            dash.updateSettings(config);
             dash.on('error', () => source.dispatchEvent(new Event('error')));
+            abortSignal.addEventListener('abort', () => dash.destroy());
             return dash;
         }
     }).asReadonly();
-    readonly audioHLS = linkedSignal<HTMLSourceElement | undefined, Hls | undefined>({
-        source: this.audioSource,
-        computation: (source, previous) => {
-            previous?.value?.destroy();
+    readonly audioHLS = resource({
+        params: () => ({ config: this.audioHLSConfig(), media: this.audio(), source: this.audioSource() }),
+        loader: async ({ abortSignal, params }) => {
+            const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
-            const hls = new Hls(this.audioHLSConfig());
-            hls.attachMedia(this.audio()!);
+            const hls = new Hls(config);
+            hls.attachMedia(media!);
             hls.loadSource(source.src);
             hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
+            abortSignal.addEventListener('abort', () => hls.destroy());
             return hls;
         }
-    });
-    readonly videoDash = linkedSignal<HTMLSourceElement | undefined, MediaPlayerClass | undefined>({
-        source: this.videoSource,
-        computation: (source, previous) => {
-            previous?.value?.destroy();
+    }).asReadonly();
+    readonly videoDash = resource({
+        params: () => ({ config: this.videoDashConfig(), media: this.video(), source: this.videoSource() }),
+        loader: async ({ abortSignal, params }) => {
+            const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
             const dash = MediaPlayer().create();
-            dash.initialize(this.video(), source.src, this.video()?.autoplay);
-            dash.updateSettings(this.videoDashConfig());
+            dash.initialize(media, source.src, media?.autoplay);
+            dash.updateSettings(config);
             dash.on('error', () => source.dispatchEvent(new Event('error')));
+            abortSignal.addEventListener('abort', () => dash.destroy());
             return dash;
         }
     }).asReadonly();
-    readonly videoHLS = linkedSignal<HTMLSourceElement | undefined, Hls | undefined>({
-        source: this.videoSource,
-        computation: (source, previous) => {
-            previous?.value?.destroy();
+    readonly videoHLS = resource({
+        params: () => ({ config: this.videoHLSConfig(), media: this.video(), source: this.videoSource() }),
+        loader: async ({ abortSignal, params }) => {
+            const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
-            const hls = new Hls(this.videoHLSConfig());
-            hls.attachMedia(this.video()!);
+            const hls = new Hls(config);
+            hls.attachMedia(media!);
             hls.loadSource(source.src);
             hls.on(Hls.Events.ERROR, (_, event) => event.fatal && source.dispatchEvent(new Event('error')));
+            abortSignal.addEventListener('abort', () => hls.destroy());
             return hls;
         }
-    });
+    }).asReadonly();
 
-    private audioLoading = signal(false);
-    private videoLoading = signal(false);
-
-    readonly isLoading = computed(() => this.audioLoading() || this.videoLoading());
+    readonly isLoading = resource({
+        defaultValue: false,
+        params: () => ({ audio: this.audio(), video: this.video() }),
+        stream: async ({ abortSignal, params }) => {
+            const { audio, video } = params;
+            const audioLoading = signal(false);
+            const videoLoading = signal(false);
+            audio?.addEventListener('canplay', () => audioLoading.set(false), { signal: abortSignal });
+            audio?.addEventListener('emptied', () => audioLoading.set(false), { signal: abortSignal });
+            audio?.addEventListener('loadstart', () => audioLoading.set(true), { signal: abortSignal });
+            audio?.addEventListener('waiting', () => audioLoading.set(!!audio?.networkState), { signal: abortSignal });
+            video?.addEventListener('canplay', () => videoLoading.set(false), { signal: abortSignal });
+            video?.addEventListener('emptied', () => videoLoading.set(false), { signal: abortSignal });
+            video?.addEventListener('loadstart', () => videoLoading.set(true), { signal: abortSignal });
+            video?.addEventListener('waiting', () => videoLoading.set(!!video?.networkState), { signal: abortSignal });
+            return computed(() => ({ value: audioLoading() || videoLoading() }));
+        }
+    }).asReadonly();
 
     private audioSources$ = effect((onCleanup) => {
         const controller = new AbortController();
@@ -122,8 +140,6 @@ export class NgxPlayerComponent {
         audio.addEventListener('loadstart', () => {
             const source = this.audioSources().find((source) => source.src === audio.currentSrc);
             if (source) this.audioSource.set(source);
-            this.audioDash();
-            this.audioHLS();
         }, { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
@@ -135,24 +151,7 @@ export class NgxPlayerComponent {
         video.addEventListener('loadstart', () => {
             const source = this.videoSources().find((source) => source.src === video.currentSrc);
             if (source) this.videoSource.set(source);
-            this.videoDash();
-            this.videoHLS();
         }, { signal: controller.signal });
-        onCleanup(() => controller.abort());
-    });
-
-    private isLoading$ = effect((onCleanup) => {
-        const audio = this.audio();
-        const video = this.video();
-        const controller = new AbortController();
-        audio?.addEventListener('canplay', () => this.audioLoading.set(false), { signal: controller.signal });
-        audio?.addEventListener('emptied', () => this.audioLoading.set(false), { signal: controller.signal });
-        audio?.addEventListener('loadstart', () => this.audioLoading.set(true), { signal: controller.signal });
-        audio?.addEventListener('waiting', () => this.audioLoading.set(!!audio?.networkState), { signal: controller.signal });
-        video?.addEventListener('canplay', () => this.videoLoading.set(false), { signal: controller.signal });
-        video?.addEventListener('emptied', () => this.videoLoading.set(false), { signal: controller.signal });
-        video?.addEventListener('loadstart', () => this.videoLoading.set(true), { signal: controller.signal });
-        video?.addEventListener('waiting', () => this.videoLoading.set(!!video?.networkState), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
 

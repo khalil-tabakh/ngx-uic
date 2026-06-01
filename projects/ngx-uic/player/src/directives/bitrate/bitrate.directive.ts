@@ -184,10 +184,10 @@ export class NgxBitrateDirective {
     });
 
     private auto$ = effect((onCleanup) => {
-        const dash = this.player.audioDash();
+        const dash = this.player.audioDash.value();
         const onDynamicToStatic = () => this.auto.set(dash?.getSettings().streaming?.abr?.autoSwitchBitrate?.audio ?? false);
         dash?.on('dynamicToStatic', onDynamicToStatic);
-        const hls = this.player.videoHLS();
+        const hls = this.player.videoHLS.value();
         const onHlsAudioTrackSwitched = () => this.auto.set(hls?.audioTrack === -1);
         hls?.on(Hls.Events.AUDIO_TRACK_SWITCHED, onHlsAudioTrackSwitched);
         onCleanup(() => {
@@ -213,10 +213,10 @@ export class NgxBitrateDirective {
             }
         };
         media.addEventListener('loadedmetadata', onLoadedmetadata);
-        const dash = this.player.audioDash() || this.player.videoDash();
+        const dash = this.player.audioDash.value() || this.player.videoDash.value();
         const onQualityChangeRequested = () => this.bitrate.set(this.getDashBitrate(dash));
         dash?.on('qualityChangeRequested', onQualityChangeRequested);
-        const hls = this.player.audioHLS() || this.player.videoHLS();
+        const hls = this.player.audioHLS.value() || this.player.videoHLS.value();
         const onHlsAudioTrackSwitched = () => this.bitrate.set(this.getHLSBitrate(hls));
         hls?.on(Hls.Events.AUDIO_TRACK_SWITCHED, onHlsAudioTrackSwitched);
         onCleanup(() => {
@@ -230,15 +230,15 @@ export class NgxBitrateDirective {
         if (this.audioSources.isLoading() || this.videoSources.isLoading()) return;
         const audioBitrate = this.bitrate() ? String(this.bitrate()) : '';
         const audio = this.player.audio();
-        if (audio) this.reload(audioBitrate, audio, this.audioSources.value(), untracked(this.player.audioDash), untracked(this.player.audioHLS));
+        if (audio) this.reload(audioBitrate, audio, this.audioSources.value(), untracked(this.player.audioDash.value), untracked(this.player.audioHLS.value));
         const videoBitrate = !audio?.getElementsByTagName('source').length ? audioBitrate : '';;
         const video = this.player.video();
-        if (video) this.reload(videoBitrate, video, this.videoSources.value(), untracked(this.player.videoDash), untracked(this.player.videoHLS));
+        if (video) this.reload(videoBitrate, video, this.videoSources.value(), untracked(this.player.videoDash.value), untracked(this.player.videoHLS.value));
     });
     private toggle$ = effect(() => {
-        const dash = this.player.audioDash() || this.player.videoDash();
+        const dash = this.player.audioDash.value() || this.player.videoDash.value();
         if (dash) dash?.updateSettings({ streaming: { abr: { autoSwitchBitrate: { audio: this.auto() } } } });
-        const hls = this.player.audioHLS() || this.player.videoHLS();
+        const hls = this.player.audioHLS.value() || this.player.videoHLS.value();
         if (hls && this.auto()) hls.audioTrack = -1;
     });
 

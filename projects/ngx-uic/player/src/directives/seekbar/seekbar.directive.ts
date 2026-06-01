@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, ElementRef, Signal, WritableSignal, afterRenderEffect, booleanAttribute, effect, inject, input, linkedSignal, resource, signal, untracked } from '@angular/core';
+import { DOCUMENT, Directive, ElementRef, afterRenderEffect, booleanAttribute, inject, input, resource, signal, untracked } from '@angular/core';
 import { MediaPlayer } from 'dashjs';
 import Hls from 'hls.js';
 import { NgxPlayerComponent } from '../../components/player/player.component';
@@ -23,17 +23,56 @@ export class NgxSeekBarDirective {
     readonly regenerate = input(false, { transform: booleanAttribute });
     readonly thumbnail = input<readonly number[] | number | string>([]);
 
-    private timer$?: ReturnType<typeof setTimeout>;
-
-    readonly buffered = signal<[number, number][]>([]);
-
-    readonly currentTime = linkedSignal(() => this.player.video()?.currentTime || this.player.audio()?.currentTime || 0) as Signal<number>;
-    readonly duration = linkedSignal(() => this.player.video()?.duration || this.player.audio()?.duration || 0) as Signal<number>;
+    readonly buffered = resource<ReadonlyMap<number, number>, HTMLMediaElement | undefined>({
+        defaultValue: new Map<number, number>(),
+        params: () => this.player.video() || this.player.audio(),
+        stream: async ({ abortSignal, params: media }) => {
+            const response = signal({ value: new Map() });
+            let timer$: ReturnType<typeof setTimeout>;
+            const setBuffered = () => {
+                clearTimeout(timer$);
+                const buffered = new Map<number, number>();
+                for (let i = 0; i < media.buffered.length; ++i) buffered.set(media.buffered.start(i), media.buffered.end(i));
+                response.set({ value: buffered });
+                // Force recheck every half remaining buffered time because "progress" event doesn't reliably trigger at the media end
+                const closest = buffered.values().find((end) => end >= media.currentTime) || 0;
+                if (closest > 0 && closest < media.duration) {
+                    const timeout = Math.ceil((closest - media.currentTime) / 2) * 1000;
+                    if (timeout > 0 && !media.paused) timer$ = setTimeout(() => setBuffered(), timeout);
+                }
+            }
+            setBuffered();
+            media.addEventListener('loadstart', () => response.set({ value: new Map<number, number>() }), { signal: abortSignal });
+            media.addEventListener('progress', () => setBuffered(), { signal: abortSignal });
+            media.addEventListener('playing', () => setBuffered(), { signal: abortSignal }); // Trigger after each pointerup event
+            abortSignal.addEventListener('abort', () => clearTimeout(timer$), { once: true });
+            return response;
+        }
+    }).asReadonly();
+    readonly currentTime = resource<number, HTMLMediaElement | undefined>({
+        defaultValue: 0,
+        params: () => this.player.video() || this.player.audio(),
+        stream: async ({ abortSignal, params: media }) => {
+            const response = signal({ value: media.currentTime || 0 });
+            this.element.addEventListener('input', () => response.set({ value: this.range.value() }), { signal: abortSignal });
+            media.addEventListener('timeupdate', () => response.set({ value: media.currentTime }), { signal: abortSignal });
+            return response;
+        }
+    }).asReadonly();
+    readonly duration = resource<number, HTMLMediaElement | undefined>({
+        defaultValue: 0,
+        params: () => this.player.video() || this.player.audio(),
+        stream: async ({ abortSignal, params: media }) => {
+            const response = signal({ value: media.duration || 0 });
+            media.addEventListener('durationchange', () => response.set({ value: media.duration }), { signal: abortSignal });
+            return response;
+        }
+    }).asReadonly();
 
     readonly thumbnails = resource({
         defaultValue: new Map<number, string | null | undefined>(),
         params: () => ({
-            duration: this.duration(),
+            duration: this.duration.value(),
             source: this.regenerate() ? this.player.videoSource() : untracked(this.player.videoSource),
             thumbnail: this.thumbnail(),
             video: this.player.video()
@@ -110,38 +149,14 @@ export class NgxSeekBarDirective {
         }
     }).asReadonly();
 
-    private buffered$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media) return;
-        const controller = new AbortController();
-        media.addEventListener('loadstart', () => this.buffered.set([]), { signal: controller.signal });
-        media.addEventListener('progress', () => this.setBuffered(), { signal: controller.signal });
-        media.addEventListener('playing', () => this.setBuffered(), { signal: controller.signal }); // Trigger after each pointerup event
-        onCleanup(() => controller.abort());
-    });
-    private currentTime$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media) return;
-        const onTimeupdate = () => (this.currentTime as WritableSignal<number>).set(media.currentTime);
-        media.addEventListener('timeupdate', onTimeupdate);
-        onCleanup(() => media.removeEventListener('timeupdate', onTimeupdate));
-    });
-    private duration$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media) return;
-        const onDurationchange = () => (this.duration as WritableSignal<number>).set(media.duration);
-        media.addEventListener('durationchange', onDurationchange);
-        onCleanup(() => media.removeEventListener('durationchange', onDurationchange));
-    });
-
     private renderBuffered$ = afterRenderEffect({
         write: () => this.range.segmentRefs().forEach((segmentRef, index) => {
-            const { start, end } = this.range.segments()[index];
-            const gradient = this.buffered()
-                .filter((buffer) => buffer[0] < end && buffer[1] > start)
-                .flatMap((buffer) => [
-                    percentage(Math.max(buffer[0], start), start, end),
-                    percentage(Math.min(buffer[1], end), start, end)
+            const { start: segmentStart, end: segmentEnd } = this.range.segments()[index];
+            const gradient = this.buffered.value().entries()
+                .filter(([bufferStart, bufferEnd]) => bufferStart < segmentEnd && bufferEnd > segmentStart)
+                .flatMap(([bufferStart, bufferEnd]) => [
+                    percentage(Math.max(bufferStart, segmentStart), segmentStart, segmentEnd),
+                    percentage(Math.min(bufferEnd, segmentEnd), segmentStart, segmentEnd)
                 ])
                 .reduce((colors, stop, index) => {
                     if (stop === 100) return colors;
@@ -156,26 +171,10 @@ export class NgxSeekBarDirective {
         })
     });
 
-    private setBuffered(): void {
-        clearTimeout(this.timer$);
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
-        if (!media) return;
-        const buffered: [number, number][] = [];
-        for (let i = 0; i < media.buffered.length; ++i) buffered.push([media.buffered.start(i), media.buffered.end(i)]);
-        this.buffered.set(buffered);
-        // Because "progress" event doesn't reliably trigger at the media end or on media reload
-        const closest = buffered.find(([_, end]) => end >= media.currentTime)?.at(1) || 0;
-        if (closest) { // Force recheck every half remaining buffered time
-            const timeout = Math.ceil((closest - media.currentTime) / 2) * 1000;
-            if (timeout > 0 && !media.paused) this.timer$ = setTimeout(() => this.setBuffered(), timeout);
-        } else media.addEventListener('timeupdate', () => this.setBuffered(), { once: true }); // Force recheck on next media time update
-    }
-
     protected onSeek(): void {
         const currentTime = this.range.value();
         if (this.player.audio()) this.player.audio()!.currentTime = currentTime;
         if (this.player.video()) this.player.video()!.currentTime = currentTime;
-        (this.currentTime as WritableSignal<number>).set(currentTime);
     }
 
     protected onSeeking(): void {

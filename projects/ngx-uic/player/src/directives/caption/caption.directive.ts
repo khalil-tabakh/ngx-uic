@@ -1,4 +1,4 @@
-import { Directive, computed, effect, inject, input, linkedSignal } from '@angular/core';
+import { Directive, computed, effect, inject, input, linkedSignal, resource, signal, untracked } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -14,29 +14,29 @@ export class NgxCaptionDirective {
 
     readonly offset = input(0);
 
-    private tracks = computed(() => this.player.videoTracks().filter((track) => track.srclang));
+    private tracks = computed(() => this.player.videoTracks().filter((track) => track.track.language));
 
-    readonly captions = linkedSignal({
-        source: () => ({ tracks: this.tracks(), video: this.player.video() }),
-        computation: ({ tracks, video }) => {
-            const captions = Array.from(video?.textTracks || []).filter((subtitle) => subtitle.language);
-            const caption = captions.find((caption) => caption.mode === 'showing');
-            return caption ? captions : captions.map((caption, index) => {
-                caption.mode = !tracks.at(index)?.default ? 'hidden' : 'showing';
-                return caption;
-            });
+    readonly captions = resource({
+        defaultValue: [],
+        params: () => ({ tracks: this.tracks(), video: this.player.video() }),
+        stream: async ({ abortSignal, params }) => {
+            const { tracks, video } = params;
+            tracks.forEach((track) => track.track.mode = track.default ? 'showing' : 'disabled');
+            const response = signal({ value: tracks.map((track) => track.track) });
+            video?.textTracks.addEventListener('change', () => response.set({ value: tracks.map((track) => track.track) }), { signal: abortSignal });
+            return response;
+        }
+    }).asReadonly();
+    
+    readonly caption = linkedSignal<TextTrack[], TextTrack | undefined>({
+        source: this.captions.value,
+        computation: (captions, previous) => {
+            const newCaption = this.captions.value().find((caption) => caption.mode === 'showing');
+            const oldCaption = captions.find((caption) => caption === previous?.value)
+            return oldCaption || newCaption;
         }
     });
 
-    readonly caption = linkedSignal(() => this.captions().find((subtitle) => subtitle.mode === 'showing') ?? null);
-
-    private captions$ = effect((onCleanup) => {
-        const video = this.player.video();
-        if (!video) return;
-        const onChange = () => this.captions.set(Array.from(video.textTracks).filter((subtitle) => subtitle.language));
-        video.textTracks.addEventListener('change', onChange);
-        onCleanup(() => video.textTracks.removeEventListener('change', onChange));
-    });
     private shift$ = effect((onCleanup) => {
         const cues = Array.from(this.caption()?.cues || []);
         const offset = this.offset();
@@ -50,9 +50,10 @@ export class NgxCaptionDirective {
         }));
     });
     private switch$ = effect(() => {
-        const video = this.player.video();
-        if (!video) return;
-        const captions = Array.from(video.textTracks);
-        captions.forEach((caption) => caption.mode = caption === this.caption() ? 'showing' : 'hidden');
+        const caption = this.caption();
+        if (caption && !this.captions.isLoading()) untracked(() => {
+            this.captions.value().forEach((caption) => caption.mode = 'disabled');
+            caption.mode = 'showing';
+        });
     });
 }
