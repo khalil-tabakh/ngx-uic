@@ -12,16 +12,16 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxLanguageDirective {
     private player = inject(NgxPlayerComponent);
 
-    private audioSources = computed(() => this.player.audioSources().filter((source) => source.lang));
-    private videoSources = computed(() => this.player.videoSources().filter((source) => source.lang));
+    private audioSources = computed<readonly HTMLSourceElement[]>(() => this.player.audioSources().filter((source) => source.lang));
+    private videoSources = computed<readonly HTMLSourceElement[]>(() => this.player.videoSources().filter((source) => source.lang));
 
-    readonly languages = computed(() => {
+    readonly languages = computed<readonly string[]>(() => {
         const sources = this.audioSources().concat(this.videoSources());
         const languages = sources.map((source) => source.lang);
         return new Set(languages).values().toArray();
     });
 
-    readonly language = linkedSignal<string[], string>({
+    readonly language = linkedSignal<readonly string[], string>({
         source: this.languages,
         computation: (languages, previous) => {
             const media: HTMLMediaElement | undefined = this.player.audio.value() || this.player.video.value();
@@ -52,7 +52,7 @@ export class NgxLanguageDirective {
         if (video) this.reload(videoLanguage, video, this.videoSources(), untracked(this.player.videoSource));
     });
 
-    private reload(language: string, media: HTMLMediaElement, sources: HTMLSourceElement[], source?: HTMLSourceElement): void {
+    private reload(language: string, media: HTMLMediaElement, sources: readonly HTMLSourceElement[], source?: HTMLSourceElement): void {
         media.lang = language;
         const currentSources = sources.toReversed().filter((source) => {
             const isSameLanguage = !language || language === source.lang;

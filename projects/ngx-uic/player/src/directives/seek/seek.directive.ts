@@ -1,4 +1,4 @@
-import { Directive, inject, input } from '@angular/core';
+import { Directive, inject, input, numberAttribute } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,7 +12,7 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxSeekDirective {
     private player = inject(NgxPlayerComponent);
 
-    readonly value = input.required<number>();
+    readonly value = input.required({ transform: numberAttribute });
 
     protected onSeek(): void {
         const audio = this.player.audio.value();

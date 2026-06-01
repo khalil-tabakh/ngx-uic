@@ -38,15 +38,15 @@ export class NgxPlayerComponent {
         }
     }).asReadonly();
 
-    readonly audioSources = linkedSignal(() => Array.from(this.audio.value()?.getElementsByTagName('source') || []));
-    readonly videoSources = linkedSignal(() => Array.from(this.video.value()?.getElementsByTagName('source') || []));
-    readonly videoTracks = linkedSignal(() => Array.from(this.video.value()?.getElementsByTagName('track') || []));
+    readonly audioSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.audio.value()?.getElementsByTagName('source') || []));
+    readonly videoSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.video.value()?.getElementsByTagName('source') || []));
+    readonly videoTracks = linkedSignal<readonly HTMLTrackElement[]>(() => Array.from(this.video.value()?.getElementsByTagName('track') || []));
 
-    readonly audioSource = linkedSignal<HTMLSourceElement[], HTMLSourceElement | undefined>({
+    readonly audioSource = linkedSignal<readonly HTMLSourceElement[], HTMLSourceElement | undefined>({
         source: this.audioSources,
         computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
     });
-    readonly videoSource = linkedSignal<HTMLSourceElement[], HTMLSourceElement | undefined>({
+    readonly videoSource = linkedSignal<readonly HTMLSourceElement[], HTMLSourceElement | undefined>({
         source: this.videoSources,
         computation: (sources, previous) => previous?.value && sources.find((source) => source === previous?.value)
     });
@@ -170,7 +170,7 @@ export class NgxPlayerComponent {
         onCleanup(() => controller.abort());
     });
 
-    private deleteElement<T extends HTMLElement>(sources: T[], source: T): T[] {
+    private deleteElement<T extends HTMLElement>(sources: readonly T[], source: T): T[] {
         source.remove();
         return sources.filter((s) => s !== source);
     }

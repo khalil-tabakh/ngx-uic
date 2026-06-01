@@ -33,7 +33,6 @@ export class NgxPlayDirective {
         media.addEventListener('play', () => this.paused.set(false), { signal: controller.signal });
         onCleanup(() => controller.abort());
     });
-
     private toggle$ = effect(() => {
         const audio = this.player.audio.value();
         const video = this.player.video.value();

@@ -31,9 +31,8 @@ export class NgxVolumeDirective {
     });
     private volume$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.audio.value() || this.player.video.value();
-        if (!media) return;
-        const onVolumechange = () => this.volume.set(media.muted ? 0 : media.volume);
-        media.addEventListener('volumechange', onVolumechange);
-        onCleanup(() => media.removeEventListener('volumechange', onVolumechange));
+        const controller = new AbortController();
+        media?.addEventListener('volumechange', () => this.volume.set(media.muted ? 0 : media.volume), { signal: controller.signal });
+        onCleanup(() => controller.abort());
     });
 }

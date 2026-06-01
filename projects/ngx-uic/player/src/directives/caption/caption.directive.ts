@@ -1,4 +1,4 @@
-import { Directive, computed, effect, inject, input, linkedSignal, resource, signal, untracked } from '@angular/core';
+import { Directive, computed, effect, inject, input, linkedSignal, numberAttribute, resource, signal, untracked } from '@angular/core';
 import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
@@ -12,7 +12,7 @@ import { NgxPlayerComponent } from '../../components/player/player.component';
 export class NgxCaptionDirective {
     private player = inject(NgxPlayerComponent);
 
-    readonly offset = input(0);
+    readonly offset = input(0, { transform: numberAttribute });
 
     private tracks = computed(() => this.player.videoTracks().filter((track) => track.track.language));
 
@@ -22,13 +22,13 @@ export class NgxCaptionDirective {
         stream: async ({ abortSignal, params }) => {
             const { tracks, video } = params;
             tracks.forEach((track) => track.track.mode = track.default ? 'showing' : 'disabled');
-            const response = signal({ value: tracks.map((track) => track.track) });
+            const response = signal({ value: tracks.map((track) => track.track) as readonly TextTrack[] });
             video?.textTracks.addEventListener('change', () => response.set({ value: tracks.map((track) => track.track) }), { signal: abortSignal });
             return response;
         }
     }).asReadonly();
     
-    readonly caption = linkedSignal<TextTrack[], TextTrack | undefined>({
+    readonly caption = linkedSignal<readonly TextTrack[], TextTrack | undefined>({
         source: this.captions.value,
         computation: (captions, previous) => {
             const newCaption = this.captions.value().find((caption) => caption.mode === 'showing');

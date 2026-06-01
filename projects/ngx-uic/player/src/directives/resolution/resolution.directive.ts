@@ -81,11 +81,11 @@ export class NgxResolutionDirective {
                     isSameLanguage ? sources.push(result.value) : result.value.remove();
                 } else result.reason.dispatchEvent(new Event('error'));
                 return sources;
-            }, [] as HTMLSourceElement[]);
+            }, [] as HTMLSourceElement[]) as readonly HTMLSourceElement[];
         }
     }).asReadonly();
 
-    readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, boolean>({
+    readonly isAutomatable = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>, boolean>({
         source: this.sources.snapshot,
         computation: (videoSources, previous) => {
             if (videoSources.status == 'resolved') {
@@ -94,7 +94,7 @@ export class NgxResolutionDirective {
             } else return previous?.value || false;
         }
     }).asReadonly();
-    readonly resolutions = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>, number[]>({
+    readonly resolutions = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>, readonly number[]>({
         source: this.sources.snapshot,
         computation: (videoSources, previous) => {
             if (videoSources.status == 'resolved') {
@@ -105,7 +105,7 @@ export class NgxResolutionDirective {
         }
     }).asReadonly();
 
-    readonly resolution = linkedSignal<number[], number>({
+    readonly resolution = linkedSignal<readonly number[], number>({
         source: this.resolutions,
         computation: (resolutions, previous) => {
             const video = this.player.video.value();
@@ -180,7 +180,7 @@ export class NgxResolutionDirective {
         if (hls && this.auto()) hls.currentLevel = -1;
     });
 
-    private reload(resolution: string, media: HTMLMediaElement, sources: HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
+    private reload(resolution: string, media: HTMLMediaElement, sources: readonly HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
         media.dataset['resolution'] = resolution;
         const isAuto = this.isAutomatable() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {

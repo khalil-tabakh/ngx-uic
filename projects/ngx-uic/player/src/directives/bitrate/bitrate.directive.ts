@@ -84,7 +84,7 @@ export class NgxBitrateDirective {
                     isSameLanguage ? sources.push(result.value) : result.value.remove();
                 } else result.reason.dispatchEvent(new Event('error'));
                 return sources;
-            }, [] as HTMLSourceElement[]);
+            }, [] as HTMLSourceElement[]) as readonly HTMLSourceElement[];
         }
     }).asReadonly();
     private videoSources = resource({
@@ -140,11 +140,11 @@ export class NgxBitrateDirective {
                 if (result.status === 'fulfilled') result.value === source && sources.push(result.value);
                 else result.reason?.dispatchEvent(new Event('error'));
                 return sources;
-            }, [] as HTMLSourceElement[]);
+            }, [] as HTMLSourceElement[]) as readonly HTMLSourceElement[];
         }
     }).asReadonly();
 
-    readonly isAutomatable = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>[], boolean>({
+    readonly isAutomatable = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>[], boolean>({
         source: () => [this.audioSources.snapshot(), this.videoSources.snapshot()],
         computation: ([audioSources, videoSources], previous) => {
             if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
@@ -153,7 +153,7 @@ export class NgxBitrateDirective {
             } else return previous?.value || false;
         }
     }).asReadonly();
-    readonly bitrates = linkedSignal<ResourceSnapshot<HTMLSourceElement[]>[], number[]>({
+    readonly bitrates = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>[], readonly number[]>({
         source: () => [this.audioSources.snapshot(), this.videoSources.snapshot()],
         computation: ([audioSources, videoSources], previous) => {
             if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
@@ -164,7 +164,7 @@ export class NgxBitrateDirective {
         }
     }).asReadonly();
 
-    readonly bitrate = linkedSignal<number[], number>({
+    readonly bitrate = linkedSignal<readonly number[], number>({
         source: this.bitrates,
         computation: (bitrates, previous) => {
             const audio = this.player.audio.value();
@@ -242,7 +242,7 @@ export class NgxBitrateDirective {
         if (hls && this.auto()) hls.audioTrack = -1;
     });
 
-    private reload(bitrate: string, media: HTMLMediaElement, sources: HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
+    private reload(bitrate: string, media: HTMLMediaElement, sources: readonly HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
         media.dataset['bitrate'] = bitrate;
         const isAuto = this.isAutomatable() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {

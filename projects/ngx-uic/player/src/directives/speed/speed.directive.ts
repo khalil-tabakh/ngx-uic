@@ -23,9 +23,8 @@ export class NgxSpeedDirective {
     });
     private speed$ = effect((onCleanup) => {
         const media: HTMLMediaElement | undefined = this.player.video.value() || this.player.audio.value();
-        if (!media) return;
-        const onRatechange = () => this.speed.set(media.playbackRate);
-        media.addEventListener('ratechange', onRatechange);
-        onCleanup(() => media.removeEventListener('ratechange', onRatechange));
+        const controller = new AbortController();
+        media?.addEventListener('ratechange', () => this.speed.set(media.playbackRate), { signal: controller.signal });
+        onCleanup(() => controller.abort());
     });
 }
