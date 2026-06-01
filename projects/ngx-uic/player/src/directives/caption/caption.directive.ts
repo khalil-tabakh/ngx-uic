@@ -18,7 +18,7 @@ export class NgxCaptionDirective {
 
     readonly captions = resource({
         defaultValue: [],
-        params: () => ({ tracks: this.tracks(), video: this.player.video() }),
+        params: () => ({ tracks: this.tracks(), video: this.player.video.value() }),
         stream: async ({ abortSignal, params }) => {
             const { tracks, video } = params;
             tracks.forEach((track) => track.track.mode = track.default ? 'showing' : 'disabled');

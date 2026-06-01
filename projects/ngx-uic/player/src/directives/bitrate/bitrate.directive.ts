@@ -15,7 +15,7 @@ export class NgxBitrateDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
-    private language = computed(() => this.player.audioSource()?.lang || this.player.audio()?.lang);
+    private language = computed(() => this.player.audioSource()?.lang || this.player.audio.value()?.lang);
 
     private audioSources = resource({
         defaultValue: [],
@@ -167,7 +167,7 @@ export class NgxBitrateDirective {
     readonly bitrate = linkedSignal<number[], number>({
         source: this.bitrates,
         computation: (bitrates, previous) => {
-            const audio = this.player.audio();
+            const audio = this.player.audio.value();
             const newBitrate = bitrates.find((bitrate) => bitrate === Number(audio?.dataset['bitrate']));
             const oldBitrate = bitrates.find((bitrate) => bitrate === previous?.value);
             return newBitrate || oldBitrate || bitrates.at(0) || 0;
@@ -196,7 +196,7 @@ export class NgxBitrateDirective {
         });
     });
     private bitrate$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
+        const media: HTMLMediaElement | undefined = this.player.audio.value() || this.player.video.value();
         if (!media) return;
         const mutation$ = new MutationObserver(() => this.bitrate.set(Number(media.dataset['bitrate'] || '')));
         mutation$.observe(media, { attributeFilter: ['data-bitrate'] });
@@ -229,10 +229,10 @@ export class NgxBitrateDirective {
     private switch$ = effect(() => {
         if (this.audioSources.isLoading() || this.videoSources.isLoading()) return;
         const audioBitrate = this.bitrate() ? String(this.bitrate()) : '';
-        const audio = this.player.audio();
+        const audio = this.player.audio.value();
         if (audio) this.reload(audioBitrate, audio, this.audioSources.value(), untracked(this.player.audioDash.value), untracked(this.player.audioHLS.value));
         const videoBitrate = !audio?.getElementsByTagName('source').length ? audioBitrate : '';;
-        const video = this.player.video();
+        const video = this.player.video.value();
         if (video) this.reload(videoBitrate, video, this.videoSources.value(), untracked(this.player.videoDash.value), untracked(this.player.videoHLS.value));
     });
     private toggle$ = effect(() => {

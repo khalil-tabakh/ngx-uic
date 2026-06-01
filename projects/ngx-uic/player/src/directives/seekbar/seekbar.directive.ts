@@ -25,7 +25,7 @@ export class NgxSeekBarDirective {
 
     readonly buffered = resource<ReadonlyMap<number, number>, HTMLMediaElement | undefined>({
         defaultValue: new Map<number, number>(),
-        params: () => this.player.video() || this.player.audio(),
+        params: () => this.player.video.value() || this.player.audio.value(),
         stream: async ({ abortSignal, params: media }) => {
             const response = signal({ value: new Map() });
             let timer$: ReturnType<typeof setTimeout>;
@@ -51,7 +51,7 @@ export class NgxSeekBarDirective {
     }).asReadonly();
     readonly currentTime = resource<number, HTMLMediaElement | undefined>({
         defaultValue: 0,
-        params: () => this.player.video() || this.player.audio(),
+        params: () => this.player.video.value() || this.player.audio.value(),
         stream: async ({ abortSignal, params: media }) => {
             const response = signal({ value: media.currentTime || 0 });
             this.element.addEventListener('input', () => response.set({ value: this.range.value() }), { signal: abortSignal });
@@ -61,7 +61,7 @@ export class NgxSeekBarDirective {
     }).asReadonly();
     readonly duration = resource<number, HTMLMediaElement | undefined>({
         defaultValue: 0,
-        params: () => this.player.video() || this.player.audio(),
+        params: () => this.player.video.value() || this.player.audio.value(),
         stream: async ({ abortSignal, params: media }) => {
             const response = signal({ value: media.duration || 0 });
             media.addEventListener('durationchange', () => response.set({ value: media.duration }), { signal: abortSignal });
@@ -75,7 +75,7 @@ export class NgxSeekBarDirective {
             duration: this.duration.value(),
             source: this.regenerate() ? this.player.videoSource() : untracked(this.player.videoSource),
             thumbnail: this.thumbnail(),
-            video: this.player.video()
+            video: this.player.video.value()
         }),
         stream: async ({ abortSignal, params }) => {
             const { duration, source, thumbnail, video } = params;
@@ -128,6 +128,7 @@ export class NgxSeekBarDirective {
                         };
                         break;
                     default:
+                        video.crossOrigin = 'anonymous';
                         video.preload = 'metadata';
                         video.src = source.src;
                         video.onerror = () => {
@@ -173,12 +174,12 @@ export class NgxSeekBarDirective {
 
     protected onSeek(): void {
         const currentTime = this.range.value();
-        if (this.player.audio()) this.player.audio()!.currentTime = currentTime;
-        if (this.player.video()) this.player.video()!.currentTime = currentTime;
+        if (this.player.audio.value()) this.player.audio.value()!.currentTime = currentTime;
+        if (this.player.video.value()) this.player.video.value()!.currentTime = currentTime;
     }
 
     protected onSeeking(): void {
-        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
+        const media: HTMLMediaElement | undefined = this.player.video.value() || this.player.audio.value();
         if (!media) return;
         const paused = media.paused;
         if (!!media.networkState) media.pause();

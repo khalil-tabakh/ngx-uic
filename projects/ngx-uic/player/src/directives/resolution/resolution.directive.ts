@@ -15,7 +15,7 @@ export class NgxResolutionDirective {
     private document = inject(DOCUMENT);
     private player = inject(NgxPlayerComponent);
 
-    private language = computed(() => !this.player.audioSource() ? this.player.videoSource()?.lang || this.player.video()?.lang : undefined);
+    private language = computed(() => !this.player.audioSource() ? this.player.videoSource()?.lang || this.player.video.value()?.lang : undefined);
 
     private sources = resource({
         defaultValue: [],
@@ -108,7 +108,7 @@ export class NgxResolutionDirective {
     readonly resolution = linkedSignal<number[], number>({
         source: this.resolutions,
         computation: (resolutions, previous) => {
-            const video = this.player.video();
+            const video = this.player.video.value();
             const newResolution = resolutions.find((resolution) => resolution === Number(video?.dataset['resolution']));
             const oldResolution = resolutions.find((resolution) => resolution === previous?.value);
             return newResolution || oldResolution || resolutions.at(0) || 0;
@@ -137,7 +137,7 @@ export class NgxResolutionDirective {
         });
     });
     private resolution$ = effect((onCleanup) => {
-        const video = this.player.video();
+        const video = this.player.video.value();
         if (!video) return;
         const mutation$ = new MutationObserver(() => this.resolution.set(Number(video?.dataset['resolution'] || '')));
         mutation$.observe(video, { attributeFilter: ['data-resolution'] });
@@ -170,7 +170,7 @@ export class NgxResolutionDirective {
     private switch$ = effect(() => {
         if (this.sources.isLoading()) return;
         const resolution = this.resolution() ? String(this.resolution()) : '';
-        const video = this.player.video();
+        const video = this.player.video.value();
         if (video) this.reload(resolution, video, this.sources.value(), untracked(this.player.videoDash.value), untracked(this.player.videoHLS.value));
     });
     private toggle$ = effect(() => {

@@ -18,6 +18,6 @@ export class NgxPipDirective {
     readonly pip = signal(!!this.document.pictureInPictureElement);
 
     private toggle$ = effect(() => this.pip()
-        ? !this.document.pictureInPictureElement && this.player.video()?.requestPictureInPicture?.()
+        ? !this.document.pictureInPictureElement && this.player.video.value()?.requestPictureInPicture?.()
         : this.document.pictureInPictureElement && this.document.exitPictureInPicture());
 }

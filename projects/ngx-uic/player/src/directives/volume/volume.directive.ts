@@ -13,24 +13,24 @@ export class NgxVolumeDirective {
     private player = inject(NgxPlayerComponent);
 
     readonly volume = linkedSignal({
-        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
+        source: () => ({ audio: this.player.audio.value(), video: this.player.video.value() }),
         computation: ({ audio, video }) => audio?.volume ?? video?.volume ?? 1
     });
 
     private adjust$ = effect(() => {
-        const audio = this.player.audio();
+        const audio = this.player.audio.value();
         if (audio) {
             audio.muted = !this.volume();
             if (!audio.muted) audio.volume = this.volume();
         }
-        const video = this.player.video();
+        const video = this.player.video.value();
         if (video) {
             video.muted = !this.volume() || !!this.player.audioSource();
             if (!video.muted) video.volume = this.volume();
         }
     });
     private volume$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.audio() || this.player.video();
+        const media: HTMLMediaElement | undefined = this.player.audio.value() || this.player.video.value();
         if (!media) return;
         const onVolumechange = () => this.volume.set(media.muted ? 0 : media.volume);
         media.addEventListener('volumechange', onVolumechange);
