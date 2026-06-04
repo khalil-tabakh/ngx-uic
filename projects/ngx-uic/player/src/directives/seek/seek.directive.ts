@@ -15,8 +15,8 @@ export class NgxSeekDirective {
     readonly value = input.required({ transform: numberAttribute });
 
     protected onSeek(): void {
-        const audio = this.player.audio.value();
-        const video = this.player.video.value();
+        const audio = this.player.audio();
+        const video = this.player.video();
         const duration = video?.duration ?? audio?.duration ?? 0
         const oldTime = video?.currentTime ?? audio?.currentTime ?? 0;
         const newTime = Math.min(Math.max(oldTime + this.value(), 0), duration);

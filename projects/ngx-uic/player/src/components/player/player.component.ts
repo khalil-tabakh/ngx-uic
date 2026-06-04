@@ -12,35 +12,16 @@ import Hls, { HlsConfig } from 'hls.js';
 export class NgxPlayerComponent {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
+    readonly audio = input<HTMLAudioElement>();
     readonly audioDashConfig = input<MediaPlayerSettingClass>({});
     readonly audioHLSConfig = input<Partial<HlsConfig>>();
+    readonly video = input<HTMLVideoElement>();
     readonly videoDashConfig = input<MediaPlayerSettingClass>({});
     readonly videoHLSConfig = input<Partial<HlsConfig>>();
 
-    readonly audio = resource({
-        params: () => this.element,
-        stream: async ({ abortSignal, params: player }) => {
-            const response = signal({ value: undefined as HTMLAudioElement | undefined });
-            const mutation$ = new MutationObserver(() => response.set({ value: player.getElementsByTagName('audio')[0] }));
-            mutation$.observe(player, { childList: true, subtree: true });
-            abortSignal.addEventListener('abort', () => mutation$.disconnect(), { once: true });
-            return response;
-        }
-    }).asReadonly();
-    readonly video = resource({
-        params: () => this.element,
-        stream: async ({ abortSignal, params: player }) => {
-            const response = signal({ value: undefined as HTMLVideoElement | undefined });
-            const mutation$ = new MutationObserver(() => response.set({ value: player.getElementsByTagName('video')[0] }));
-            mutation$.observe(player, { childList: true, subtree: true });
-            abortSignal.addEventListener('abort', () => mutation$.disconnect(), { once: true });
-            return response;
-        }
-    }).asReadonly();
-
-    readonly audioSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.audio.value()?.getElementsByTagName('source') || []));
-    readonly videoSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.video.value()?.getElementsByTagName('source') || []));
-    readonly videoTracks = linkedSignal<readonly HTMLTrackElement[]>(() => Array.from(this.video.value()?.getElementsByTagName('track') || []));
+    readonly audioSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.audio()?.getElementsByTagName('source') || []));
+    readonly videoSources = linkedSignal<readonly HTMLSourceElement[]>(() => Array.from(this.video()?.getElementsByTagName('source') || []));
+    readonly videoTracks = linkedSignal<readonly HTMLTrackElement[]>(() => Array.from(this.video()?.getElementsByTagName('track') || []));
 
     readonly audioSource = linkedSignal<readonly HTMLSourceElement[], HTMLSourceElement | undefined>({
         source: this.audioSources,
@@ -52,7 +33,7 @@ export class NgxPlayerComponent {
     });
 
     readonly audioDash = resource({
-        params: () => ({ config: this.audioDashConfig(), media: this.audio.value(), source: this.audioSource() }),
+        params: () => ({ config: this.audioDashConfig(), media: this.audio(), source: this.audioSource() }),
         loader: async ({ abortSignal, params }) => {
             const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
@@ -65,7 +46,7 @@ export class NgxPlayerComponent {
         }
     }).asReadonly();
     readonly audioHLS = resource({
-        params: () => ({ config: this.audioHLSConfig(), media: this.audio.value(), source: this.audioSource() }),
+        params: () => ({ config: this.audioHLSConfig(), media: this.audio(), source: this.audioSource() }),
         loader: async ({ abortSignal, params }) => {
             const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
@@ -78,7 +59,7 @@ export class NgxPlayerComponent {
         }
     }).asReadonly();
     readonly videoDash = resource({
-        params: () => ({ config: this.videoDashConfig(), media: this.video.value(), source: this.videoSource() }),
+        params: () => ({ config: this.videoDashConfig(), media: this.video(), source: this.videoSource() }),
         loader: async ({ abortSignal, params }) => {
             const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.mpd')) return;
@@ -91,7 +72,7 @@ export class NgxPlayerComponent {
         }
     }).asReadonly();
     readonly videoHLS = resource({
-        params: () => ({ config: this.videoHLSConfig(), media: this.video.value(), source: this.videoSource() }),
+        params: () => ({ config: this.videoHLSConfig(), media: this.video(), source: this.videoSource() }),
         loader: async ({ abortSignal, params }) => {
             const { config, media, source } = params;
             if (!source?.src.split('?')[0].endsWith('.m3u8')) return;
@@ -106,7 +87,7 @@ export class NgxPlayerComponent {
 
     readonly isLoading = resource({
         defaultValue: false,
-        params: () => ({ audio: this.audio.value(), video: this.video.value() }),
+        params: () => ({ audio: this.audio(), video: this.video() }),
         stream: async ({ abortSignal, params }) => {
             const { audio, video } = params;
             const audioLoading = signal(false);
@@ -148,7 +129,7 @@ export class NgxPlayerComponent {
     });
 
     private audioSource$ = effect((onCleanup) => {
-        const audio = this.audio.value();
+        const audio = this.audio();
         if (!audio) return;
         const controller = new AbortController();
         audio.addEventListener('emptied', () => !audio.networkState && this.audioSource.set(undefined), { signal: controller.signal });
@@ -159,7 +140,7 @@ export class NgxPlayerComponent {
         onCleanup(() => controller.abort());
     });
     private videoSource$ = effect((onCleanup) => {
-        const video = this.video.value();
+        const video = this.video();
         if (!video) return;
         const controller = new AbortController();
         video.addEventListener('emptied', () => !video.networkState && this.videoSource.set(undefined), { signal: controller.signal });

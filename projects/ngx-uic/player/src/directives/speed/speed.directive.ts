@@ -13,16 +13,16 @@ export class NgxSpeedDirective {
     private player = inject(NgxPlayerComponent);
 
     readonly speed = linkedSignal({
-        source: () => ({ audio: this.player.audio.value(), video: this.player.video.value() }),
+        source: () => ({ audio: this.player.audio(), video: this.player.video() }),
         computation: ({ audio, video }) => video?.playbackRate ?? audio?.playbackRate ?? 1
     });
 
     private adjust$ = effect(() => {
-        if (this.player.audio.value()) this.player.audio.value()!.playbackRate = this.speed();
-        if (this.player.video.value()) this.player.video.value()!.playbackRate = this.speed();
+        if (this.player.audio()) this.player.audio()!.playbackRate = this.speed();
+        if (this.player.video()) this.player.video()!.playbackRate = this.speed();
     });
     private speed$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video.value() || this.player.audio.value();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         const controller = new AbortController();
         media?.addEventListener('ratechange', () => this.speed.set(media.playbackRate), { signal: controller.signal });
         onCleanup(() => controller.abort());

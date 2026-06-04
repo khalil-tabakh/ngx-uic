@@ -14,7 +14,7 @@ export class NgxPlayDirective {
 
     readonly ended = resource<boolean, HTMLMediaElement | undefined>({
         defaultValue: false,
-        params: () => this.player.video.value() || this.player.audio.value(),
+        params: () => this.player.video() || this.player.audio(),
         stream: async ({ abortSignal, params: media }) => {
             const response = signal({ value: media.ended });
             media.addEventListener('canplay', () => response.set({ value: false }), { signal: abortSignal });
@@ -23,10 +23,10 @@ export class NgxPlayDirective {
         }
     }).asReadonly();
 
-    readonly paused = linkedSignal(() => this.player.video.value()?.paused ?? this.player.audio.value()?.paused ?? true);
+    readonly paused = linkedSignal(() => this.player.video()?.paused ?? this.player.audio()?.paused ?? true);
 
     private paused$ = effect((onCleanup) => {
-        const media: HTMLMediaElement | undefined = this.player.video.value() || this.player.audio.value();
+        const media: HTMLMediaElement | undefined = this.player.video() || this.player.audio();
         if (!media) return;
         const controller = new AbortController();
         media.addEventListener('pause', () => this.paused.set(!this.player.isLoading.value()), { signal: controller.signal });
@@ -34,8 +34,8 @@ export class NgxPlayDirective {
         onCleanup(() => controller.abort());
     });
     private toggle$ = effect(() => {
-        const audio = this.player.audio.value();
-        const video = this.player.video.value();
+        const audio = this.player.audio();
+        const video = this.player.video();
         if (this.player.isLoading.value()) {
             if (!!audio?.networkState) audio.pause();
             if (!!video?.networkState) video.pause();
