@@ -33,7 +33,7 @@ export class NgxCaptionDirective {
         computation: (captions, previous) => {
             const newCaption = this.captions.value().find((caption) => caption.mode === 'showing');
             const oldCaption = captions.find((caption) => caption === previous?.value)
-            return oldCaption || newCaption;
+            return newCaption || oldCaption;
         }
     });
 
@@ -51,9 +51,9 @@ export class NgxCaptionDirective {
     });
     private switch$ = effect(() => {
         const caption = this.caption();
-        if (caption && !this.captions.isLoading()) untracked(() => {
+        if (!this.captions.isLoading()) untracked(() => {
             this.captions.value().forEach((caption) => caption.mode = 'disabled');
-            caption.mode = 'showing';
+            if (caption) caption.mode = 'showing';
         });
     });
 }
