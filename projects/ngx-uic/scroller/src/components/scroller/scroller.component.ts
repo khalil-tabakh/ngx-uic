@@ -19,8 +19,9 @@ export class NgxScrollerComponent<Item = unknown> {
     readonly offset = input(0, { transform: offsetAttribute });
     readonly overflow = input(false, { transform: booleanAttribute });
     readonly root = input<HTMLElement>(this.element);
-    readonly rootMargin = input<string>();
-    readonly threshold = input<number | number[]>();
+    readonly rootMargin = input<IntersectionObserverInit['rootMargin']>();
+    readonly scrollMargin = input<IntersectionObserverInit['scrollMargin']>();
+    readonly threshold = input<IntersectionObserverInit['threshold']>();
     readonly virtualize = input(false, { transform: booleanAttribute });
 
     readonly first = output<void>();
@@ -67,8 +68,8 @@ export class NgxScrollerComponent<Item = unknown> {
     private lastIndex = computed(() => this.intersections().findLastIndex((intersection) => intersection.isIntersecting));
     private lastOffset = computed(() => Math.max(this.lastIndex(), this.intersections().length - this.getItemsCount(-1, this.offset())));
 
-    private intersection$ = linkedSignal<{ root: HTMLElement, rootMargin?: string, threshold?: number | number[] }, IntersectionObserver>({
-        source: () => ({ root: this.root(), rootMargin: this.rootMargin(), offset: this.offset(), threshold: this.threshold() }),
+    private intersection$ = linkedSignal<IntersectionObserverInit, IntersectionObserver>({
+        source: () => ({ offset: this.offset(), root: this.root(), rootMargin: this.rootMargin(), scrollMargin: this.scrollMargin(), threshold: this.threshold() }),
         computation: (current, previous) => {
             previous?.value.disconnect();
             return new IntersectionObserver((intersections) => {
@@ -109,23 +110,24 @@ export class NgxScrollerComponent<Item = unknown> {
                 // Unshift content
                 const index = newStart > oldStart ? newStart - oldStart : 0;
                 const anchor = this.intersections()[index].target as HTMLElement;
+                const root = current.root as HTMLElement;
                 const { offsetLeft: oldOffsetLeft, offsetTop: oldOffsetTop } = anchor;
-                const { scrollLeft: oldScrollLeft, scrollTop: oldScrollTop } = current.root;
+                const { scrollLeft: oldScrollLeft, scrollTop: oldScrollTop } = root;
                 if (!this.overflow() && !Math.max(oldScrollLeft, oldScrollTop)) return;
                 afterNextRender({
                     earlyRead: () => ({
                         newOffsetLeft: anchor.offsetLeft,
                         newOffsetTop: anchor.offsetTop,
-                        newScrollLeft: current.root.scrollLeft,
-                        newScrollTop: current.root.scrollTop
+                        newScrollLeft: root.scrollLeft,
+                        newScrollTop: root.scrollTop
                     }),
-                    write: ({ newOffsetLeft, newOffsetTop, newScrollLeft, newScrollTop }) => current.root.scrollBy({
+                    write: ({ newOffsetLeft, newOffsetTop, newScrollLeft, newScrollTop }) => root.scrollBy({
                         behavior: 'instant',
                         left: (newOffsetLeft - oldOffsetLeft) - (newScrollLeft - oldScrollLeft),
                         top: (newOffsetTop - oldOffsetTop) - (newScrollTop - oldScrollTop)
                     })
                 }, { injector: this.injector });
-            }, { root: current.root, rootMargin: current.rootMargin, threshold: current.threshold });
+            }, { root: current.root, rootMargin: current.rootMargin, scrollMargin: current.scrollMargin, threshold: current.threshold });
         }
     });
 
