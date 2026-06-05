@@ -1,14 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, Signal, WritableSignal, afterRenderEffect, computed, effect, inject, input, model, numberAttribute, signal, untracked, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, effect, inject, input, model, numberAttribute, resource, signal, untracked, viewChild, viewChildren } from '@angular/core';
 import { between, clamp, closest, distance, percentage } from '../../utils/functions.util';
 
 @Component({
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: {
-        '(pointerenter)': 'onHovering()',
-        '(pointerdown)': 'onSliding($event)'
-    },
+    host: { '(pointerdown)': 'onSliding($event)' },
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NgxRangeComponent {
@@ -30,9 +27,6 @@ export class NgxRangeComponent {
     readonly sliderRef = viewChild.required<ElementRef<HTMLElement>>('sliderRef');
     readonly thumbRefs = viewChildren<ElementRef<HTMLElement>>('thumbRef');
     readonly trackRef = viewChild.required<ElementRef<HTMLElement>>('trackRef');
-
-    readonly hover = signal(NaN) as Signal<number>;
-    readonly segments = signal([]) as Signal<readonly { start: number, end: number }[]>;
 
     readonly marks = computed<readonly number[]>(() => {
         const min = this.min(), max = this.max(), mark = this.mark();
@@ -62,6 +56,42 @@ export class NgxRangeComponent {
         else if (!steps.includes(relative)) return closest(relative, steps);
         else return relative;
     });
+    readonly segments = computed(() => {
+        const min = this.min(), max = this.max(), splits = this.splits(), segmentRefs = this.segmentRefs(), trackRef = this.trackRef();
+        return segmentRefs.reduce((segments, segmentRef) => {
+            const segmentOffsetLeft = segmentRef.nativeElement.offsetLeft;
+            const segmentOffsetRight = segmentRef.nativeElement.offsetLeft + segmentRef.nativeElement.offsetWidth;
+            const start = (max - min) * segmentOffsetLeft / trackRef.nativeElement.offsetWidth + min;
+            const end = (max - min) * segmentOffsetRight / trackRef.nativeElement.offsetWidth + min;
+            return segments.set(start, end);
+        }, new Map<number, number>()) as ReadonlyMap<number, number>;
+    });
+
+    readonly hover = resource({
+        defaultValue: NaN,
+        params: () => ({ min: this.min(), max: this.max(), range: this.element }),
+        stream: async ({ abortSignal, params }) => {
+            const { min, max, range } = params;
+            const response = signal({ value: NaN });
+            range.addEventListener('pointerenter', () => {
+                const rangeStyle = getComputedStyle(range);
+                const rangeRect = range.getBoundingClientRect();
+                const rangeLeft = rangeRect.left + parseFloat(rangeStyle.paddingLeft);
+                const rangeRight = rangeRect.right - parseFloat(rangeStyle.paddingRight);
+                const rangeWidth = rangeRight - rangeLeft;
+                const controller = new AbortController();
+                range.addEventListener('pointermove', (event) => {
+                    const offsetX = event.clientX - rangeLeft;
+                    response.set({ value: (max - min) * clamp(offsetX / rangeWidth, 0, 1) + min });
+                }, { signal: controller.signal });
+                range.addEventListener('pointerleave', () => {
+                    response.set({ value: NaN });
+                    controller.abort();
+                }, { signal: controller.signal });
+            }, { signal: abortSignal });
+            return response;
+        }
+    }).asReadonly();
 
     private initModels$ = effect(() => {
         const min = this.min(), max = this.max(), steps = this.steps(), origin = this.origin(), type = this.type();
@@ -77,58 +107,23 @@ export class NgxRangeComponent {
             else if (!steps.includes(this.upper())) this.upper.update((upper) => closest(upper, steps));
         });
     });
-
-    private renderSegments$ = afterRenderEffect({
-        earlyRead: () => {
-            this.splits();
-            const track = this.trackRef().nativeElement;
-            const segments = this.segmentRefs().map((segmentRef) => {
-                const segment = segmentRef.nativeElement;
-                const segmentOffsetLeft = segment.offsetLeft;
-                const segmentOffsetRight = segment.offsetLeft + segment.offsetWidth;
-                const start = (this.max() - this.min()) * segmentOffsetLeft / track.offsetWidth + this.min();
-                const end = (this.max() - this.min()) * segmentOffsetRight / track.offsetWidth + this.min();
-                return { start, end };
-            });
-            (this.segments as WritableSignal<ReturnType<typeof this.segments>>).set(segments);
-        },
-        write: () => {
-            const hover = this.hover();
-            const lower = this.type() === 'single' ? this.origin() : this.lower();
-            const upper = this.type() === 'single' ? this.value() : this.upper();
-            const value = this.type() === 'single' ? this.value() : distance(hover, lower) < distance(hover, upper) ? lower : upper;
-            this.segmentRefs().forEach((segmentRef, index) => {
-                const { start, end } = this.segments()[index];
-                const segment = segmentRef.nativeElement;
-                segment.classList.toggle('segment--hover', between(this.hover(), start, end));
-                segment.classList.toggle('segment--lower', between(this.lower(), start, end));
-                segment.classList.toggle('segment--upper', between(this.upper(), start, end));
-                segment.classList.toggle('segment--value', between(this.value(), start, end));
-                segment.style.setProperty('--hover', `${clamp(percentage(hover, start, end), 0, 100)}`);
-                segment.style.setProperty('--lower', `${clamp(percentage(lower, start, end), 0, 100)}`);
-                segment.style.setProperty('--upper', `${clamp(percentage(upper, start, end), 0, 100)}`);
-                segment.style.setProperty('--value', `${clamp(percentage(value, start, end), 0, 100)}`);
-            });
-        }
+    private updateStyles$ = effect(() => {
+        const hover = this.hover.value();
+        const lower = this.type() === 'single' ? this.origin() : this.lower();
+        const upper = this.type() === 'single' ? this.value() : this.upper();
+        const value = this.type() === 'single' ? this.value() : distance(hover, lower) < distance(hover, upper) ? lower : upper;
+        this.segments().entries().forEach(([start, end], index) => {
+            const segment = this.segmentRefs()[index].nativeElement;
+            segment.classList.toggle('segment--hover', between(hover, start, end));
+            segment.classList.toggle('segment--lower', between(this.lower(), start, end));
+            segment.classList.toggle('segment--upper', between(this.upper(), start, end));
+            segment.classList.toggle('segment--value', between(this.value(), start, end));
+            segment.style.setProperty('--hover', `${clamp(percentage(hover, start, end), 0, 100)}`);
+            segment.style.setProperty('--lower', `${clamp(percentage(lower, start, end), 0, 100)}`);
+            segment.style.setProperty('--upper', `${clamp(percentage(upper, start, end), 0, 100)}`);
+            segment.style.setProperty('--value', `${clamp(percentage(value, start, end), 0, 100)}`);
+        });
     });
-
-    protected onHovering(): void {
-        const range = this.element;
-        const rangeStyle = getComputedStyle(range);
-        const rangeRect = range.getBoundingClientRect();
-        const rangeLeft = rangeRect.left + parseFloat(rangeStyle.paddingLeft);
-        const rangeRight = rangeRect.right - parseFloat(rangeStyle.paddingRight);
-        const rangeWidth = rangeRight - rangeLeft;
-        const controller = new AbortController();
-        range.addEventListener('pointermove', (event) => {
-            const offsetX = event.clientX - rangeLeft;
-            (this.hover as WritableSignal<number>).set((this.max() - this.min()) * clamp(offsetX / rangeWidth, 0, 1) + this.min());
-        }, { signal: controller.signal });
-        range.addEventListener('pointerleave', () => {
-            (this.hover as WritableSignal<number>).set(NaN);
-            controller.abort();
-        }, { signal: controller.signal });
-    }
 
     protected onSliding(event: PointerEvent): void {
         const slider = this.sliderRef().nativeElement;

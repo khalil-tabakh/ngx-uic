@@ -1,4 +1,4 @@
-import { DOCUMENT, Directive, ElementRef, afterRenderEffect, booleanAttribute, inject, input, resource, signal, untracked } from '@angular/core';
+import { DOCUMENT, Directive, ElementRef, booleanAttribute, effect, inject, input, resource, signal, untracked } from '@angular/core';
 import { MediaPlayer } from 'dashjs';
 import Hls from 'hls.js';
 import { NgxPlayerComponent } from '../../components/player/player.component';
@@ -150,27 +150,24 @@ export class NgxSeekBarDirective {
         }
     }).asReadonly();
 
-    private renderBuffered$ = afterRenderEffect({
-        write: () => this.range.segmentRefs().forEach((segmentRef, index) => {
-            const { start: segmentStart, end: segmentEnd } = this.range.segments()[index];
-            const gradient = this.buffered.value().entries()
-                .filter(([bufferStart, bufferEnd]) => bufferStart < segmentEnd && bufferEnd > segmentStart)
-                .flatMap(([bufferStart, bufferEnd]) => [
-                    percentage(Math.max(bufferStart, segmentStart), segmentStart, segmentEnd),
-                    percentage(Math.min(bufferEnd, segmentEnd), segmentStart, segmentEnd)
-                ])
-                .reduce((colors, stop, index) => {
-                    if (stop === 100) return colors;
-                    if (index % 2 === 0) colors.push(`transparent ${stop}%`);
-                    colors.push(`var(--buffered-color, rgba(255, 255, 255, 0.5)) ${stop}%`);
-                    if (index % 2 !== 0) colors.push(`transparent ${stop}%`);
-                    return colors;
-                }, [] as string[])
-                .join(', ');
-            const segment = segmentRef.nativeElement;
-            segment.style.setProperty('--buffered', `${gradient}`);
-        })
-    });
+    private applyBuffered$ = effect(() => this.range.segments().entries().forEach(([segmentStart, segmentEnd], index) => {
+        const gradient = this.buffered.value().entries()
+            .filter(([bufferStart, bufferEnd]) => bufferStart < segmentEnd && bufferEnd > segmentStart)
+            .flatMap(([bufferStart, bufferEnd]) => [
+                percentage(Math.max(bufferStart, segmentStart), segmentStart, segmentEnd),
+                percentage(Math.min(bufferEnd, segmentEnd), segmentStart, segmentEnd)
+            ])
+            .reduce((colors, stop, index) => {
+                if (stop === 100) return colors;
+                if (index % 2 === 0) colors.push(`transparent ${stop}%`);
+                colors.push(`var(--buffered-color, rgba(255, 255, 255, 0.5)) ${stop}%`);
+                if (index % 2 !== 0) colors.push(`transparent ${stop}%`);
+                return colors;
+            }, [] as string[])
+            .join(', ');
+        const segment = this.range.segmentRefs()[index].nativeElement;
+        segment.style.setProperty('--buffered', `${gradient}`);
+    }));
 
     protected onSeek(): void {
         const currentTime = this.range.value();

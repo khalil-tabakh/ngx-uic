@@ -5,11 +5,13 @@ $value: calc(var(--value, 0) * 1%);
 
 $thumb-height: var(--thumb-height, 1.25rem);
 $thumb-width: var(--thumb-width, $thumb-height);
+$track-height: var(--track-height, 0.5rem);
 
 :host {
     display: grid;
     width: 10rem;
     justify-items: center;
+    align-items: center;
     user-select: none;
     cursor: pointer;
 
@@ -30,7 +32,7 @@ $thumb-width: var(--thumb-width, $thumb-height);
     position: relative;
     display: flex;
     width: 100%;
-    height: 0.5rem;
+    height: $track-height;
     gap: 0.25rem;
 }
 
@@ -66,7 +68,7 @@ $thumb-width: var(--thumb-width, $thumb-height);
     position: relative;
     display: flex;
     width: calc(100% - $thumb-width);
-    height: 100%;
+    height: $track-height;
     align-items: center;
     isolation: isolate;
 }
