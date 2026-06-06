@@ -69,7 +69,7 @@ export class NgxRangeComponent {
     readonly hover = resource({
         defaultValue: NaN,
         params: () => ({ min: this.min(), max: this.max(), range: this.element }),
-        stream: async ({ abortSignal, params }) => {
+        stream: ({ abortSignal, params }) => {
             const { min, max, range } = params;
             const response = signal({ value: NaN });
             range.addEventListener('pointerenter', () => {
