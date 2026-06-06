@@ -84,6 +84,22 @@ export class NgxPlayerComponent {
         }
     }).asReadonly();
 
+    readonly isAudible = resource({
+        defaultValue: false,
+        params: () => ({ audio: this.audio(), video: this.video() }),
+        stream: ({ abortSignal, params }) => {
+            const { audio, video } = params as { audio?: any, video?: any };
+            const audioAudible = signal(false);
+            const videoAudible = signal(false);
+            audio?.addEventListener('loadedmetadata', () => {
+                audioAudible.set(!!audio.captureStream?.().getAudioTracks().length || !!audio.audioTracks?.length);
+            }, { signal: abortSignal });
+            video?.addEventListener('loadedmetadata', () => {
+                videoAudible.set(!!video.captureStream?.().getAudioTracks().length || !!video.audioTracks?.length);
+            }, { signal: abortSignal });
+            return computed(() => ({ value: audioAudible() || videoAudible() }));
+        }
+    }).asReadonly();
     readonly isLoading = resource({
         defaultValue: false,
         params: () => ({ audio: this.audio(), video: this.video() }),
