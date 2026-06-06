@@ -26,7 +26,7 @@ export class NgxSeekBarDirective {
     readonly buffered = resource<ReadonlyMap<number, number>, HTMLMediaElement | undefined>({
         defaultValue: new Map<number, number>(),
         params: () => this.player.video() || this.player.audio(),
-        stream: async ({ abortSignal, params: media }) => {
+        stream: ({ abortSignal, params: media }) => {
             const response = signal({ value: new Map() });
             let timer$: ReturnType<typeof setTimeout>;
             const setBuffered = () => {
@@ -52,7 +52,7 @@ export class NgxSeekBarDirective {
     readonly currentTime = resource<number, HTMLMediaElement | undefined>({
         defaultValue: 0,
         params: () => this.player.video() || this.player.audio(),
-        stream: async ({ abortSignal, params: media }) => {
+        stream: ({ abortSignal, params: media }) => {
             const response = signal({ value: media.currentTime || 0 });
             this.element.addEventListener('input', () => response.set({ value: this.range.value() }), { signal: abortSignal });
             media.addEventListener('timeupdate', () => response.set({ value: media.currentTime }), { signal: abortSignal });
@@ -62,7 +62,7 @@ export class NgxSeekBarDirective {
     readonly duration = resource<number, HTMLMediaElement | undefined>({
         defaultValue: 0,
         params: () => this.player.video() || this.player.audio(),
-        stream: async ({ abortSignal, params: media }) => {
+        stream: ({ abortSignal, params: media }) => {
             const response = signal({ value: media.duration || 0 });
             media.addEventListener('durationchange', () => response.set({ value: media.duration }), { signal: abortSignal });
             return response;
@@ -77,7 +77,7 @@ export class NgxSeekBarDirective {
             thumbnail: this.thumbnail(),
             video: this.player.video()
         }),
-        stream: async ({ abortSignal, params }) => {
+        stream: ({ abortSignal, params }) => {
             const { duration, source, thumbnail, video } = params;
             const timestamps: readonly number[] = Array.isArray(thumbnail)
                 ? new Set(thumbnail).values().toArray().toSorted((a, b) => a - b).filter((mark) => between(mark, 0, duration))

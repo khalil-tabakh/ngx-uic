@@ -87,7 +87,7 @@ export class NgxPlayerComponent {
     readonly isLoading = resource({
         defaultValue: false,
         params: () => ({ audio: this.audio(), video: this.video() }),
-        stream: async ({ abortSignal, params }) => {
+        stream: ({ abortSignal, params }) => {
             const { audio, video } = params;
             const audioLoading = signal(false);
             const videoLoading = signal(false);

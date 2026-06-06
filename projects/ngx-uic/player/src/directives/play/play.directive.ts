@@ -15,7 +15,7 @@ export class NgxPlayDirective {
     readonly ended = resource<boolean, HTMLMediaElement | undefined>({
         defaultValue: false,
         params: () => this.player.video() || this.player.audio(),
-        stream: async ({ abortSignal, params: media }) => {
+        stream: ({ abortSignal, params: media }) => {
             const response = signal({ value: media.ended });
             media.addEventListener('canplay', () => response.set({ value: false }), { signal: abortSignal });
             media.addEventListener('ended', () => response.set({ value: true }), { signal: abortSignal });
