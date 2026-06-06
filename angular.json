@@ -37,11 +37,11 @@
             "prefix": "ngx",
             "architect": {
                 "test": {
-                    "builder": "@angular/build:karma",
+                    "builder": "@angular/build:unit-test",
                     "options": {
+                        "buildTarget": "ngx-uic:build:development",
                         "tsConfig": "projects/ngx-uic/player/tsconfig.spec.json",
-                        "polyfills": [],
-                        "codeCoverage": true
+                        "coverage": true
                     }
                 }
             }
@@ -53,11 +53,11 @@
             "prefix": "ngx",
             "architect": {
                 "test": {
-                    "builder": "@angular/build:karma",
+                    "builder": "@angular/build:unit-test",
                     "options": {
+                        "buildTarget": "ngx-uic:build:development",
                         "tsConfig": "projects/ngx-uic/range/tsconfig.spec.json",
-                        "polyfills": [],
-                        "codeCoverage": true
+                        "coverage": true
                     }
                 }
             }
@@ -69,11 +69,11 @@
             "prefix": "ngx",
             "architect": {
                 "test": {
-                    "builder": "@angular/build:karma",
+                    "builder": "@angular/build:unit-test",
                     "options": {
+                        "buildTarget": "ngx-uic:build:development",
                         "tsConfig": "projects/ngx-uic/scroller/tsconfig.spec.json",
-                        "polyfills": [],
-                        "codeCoverage": true
+                        "coverage": true
                     }
                 }
             }
