@@ -3,20 +3,14 @@
 {
     "compileOnSave": false,
     "compilerOptions": {
-        "outDir": "./dist/out-tsc",
-        "strict": true,
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
-        "paths": {
-            "ngx-uic": ["./dist/ngx-uic"]
-        },
+        "paths": { "ngx-uic": ["./dist/ngx-uic"] },
         "skipLibCheck": true,
         "isolatedModules": true,
-        "esModuleInterop": true,
         "experimentalDecorators": true,
-        "moduleResolution": "bundler",
         "importHelpers": true,
         "target": "esnext",
         "module": "esnext",
@@ -25,7 +19,11 @@
     "angularCompilerOptions": {
         "enableI18nLegacyMessageIdFormat": false,
         "strictInjectionParameters": true,
-        "strictInputAccessModifiers": true,
-        "strictTemplates": true
-    }
+        "strictInputAccessModifiers": true
+    },
+    "files": [],
+    "references": [
+        { "path": "./projects/ngx-uic/tsconfig.lib.json" },
+        { "path": "./projects/ngx-uic/tsconfig.spec.json" }
+    ]
 }

@@ -1,12 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-scroller, [ngx-scroller]',
     templateUrl: './scroller.component.html',
     styleUrl: './scroller.component.scss',
-    exportAs: 'ngxScroller',
-    changeDetection: ChangeDetectionStrategy.OnPush
+    exportAs: 'ngxScroller'
 })
 export class NgxScrollerComponent<Item = unknown> {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

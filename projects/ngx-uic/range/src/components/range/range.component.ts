@@ -1,12 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, ModelSignal, computed, effect, inject, input, model, numberAttribute, resource, signal, untracked, viewChild, viewChildren } from '@angular/core';
+import { Component, ElementRef, ModelSignal, computed, effect, inject, input, model, numberAttribute, resource, signal, untracked, viewChild, viewChildren } from '@angular/core';
 import { between, clamp, closest, distance, percentage } from '../../utils/functions.util';
 
 @Component({
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onSliding($event)' },
-    changeDetection: ChangeDetectionStrategy.OnPush
+    host: { '(pointerdown)': 'onSliding($event)' }
 })
 export class NgxRangeComponent {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

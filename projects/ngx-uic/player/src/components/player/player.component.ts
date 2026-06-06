@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { MediaPlayer, MediaPlayerSettingClass } from 'dashjs';
 import Hls, { HlsConfig } from 'hls.js';
 
@@ -6,8 +6,7 @@ import Hls, { HlsConfig } from 'hls.js';
     selector: 'ngx-player, [ngx-player]',
     templateUrl: './player.component.html',
     styleUrl: './player.component.scss',
-    exportAs: 'ngxPlayer',
-    changeDetection: ChangeDetectionStrategy.OnPush
+    exportAs: 'ngxPlayer'
 })
 export class NgxPlayerComponent {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
