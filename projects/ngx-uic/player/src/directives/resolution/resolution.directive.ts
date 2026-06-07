@@ -85,7 +85,7 @@ export class NgxResolutionDirective {
         }
     }).asReadonly();
 
-    readonly isAutomatable = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>, boolean>({
+    readonly isAdaptive = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>, boolean>({
         source: this.sources.snapshot,
         computation: (videoSources, previous) => {
             if (videoSources.status == 'resolved') {
@@ -182,7 +182,7 @@ export class NgxResolutionDirective {
 
     private reload(resolution: string, media: HTMLMediaElement, sources: readonly HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
         media.dataset['resolution'] = resolution;
-        const isAuto = this.isAutomatable() && this.auto();
+        const isAuto = this.isAdaptive() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {
             const isSameResolution = isAuto
                 ? Number(source.dataset['resolution']?.split(',').length) > 1

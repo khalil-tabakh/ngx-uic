@@ -144,12 +144,12 @@ export class NgxBitrateDirective {
         }
     }).asReadonly();
 
-    readonly isAutomatable = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>[], boolean>({
+    readonly isAdaptive = linkedSignal<ResourceSnapshot<readonly HTMLSourceElement[]>[], boolean>({
         source: () => [this.audioSources.snapshot(), this.videoSources.snapshot()],
         computation: ([audioSources, videoSources], previous) => {
             if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
                 const sources = audioSources.value.length ? audioSources.value : videoSources.value;
-                return sources.some((source) => Number(source.dataset['bitrate']?.split(',').length) > 1)
+                return sources.some((source) => Number(source.dataset['bitrate']?.split(',').length) > 1);
             } else return previous?.value || false;
         }
     }).asReadonly();
@@ -159,7 +159,7 @@ export class NgxBitrateDirective {
             if (audioSources.status === 'resolved' && videoSources.status === 'resolved') {
                 const sources = audioSources.value.length ? audioSources.value : videoSources.value;
                 const bitrates = sources.flatMap((source) => source.dataset['bitrate']?.split(',').filter(Number).map(Number) || []);
-                return new Set(bitrates).values().toArray()
+                return new Set(bitrates).values().toArray();
             } else return previous?.value || [];
         }
     }).asReadonly();
@@ -244,7 +244,7 @@ export class NgxBitrateDirective {
 
     private reload(bitrate: string, media: HTMLMediaElement, sources: readonly HTMLSourceElement[], dash?: MediaPlayerClass, hls?: Hls): void {
         media.dataset['bitrate'] = bitrate;
-        const isAuto = this.isAutomatable() && this.auto();
+        const isAuto = this.isAdaptive() && this.auto();
         const currentSources = sources.toReversed().filter((source) => {
             const isSameBitrate = isAuto
                 ? Number(source.dataset['bitrate']?.split(',').length) > 1
