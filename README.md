@@ -17,5 +17,6 @@ npm install ngx-uic
 
 ## Modules
 
+- [`NgxPlayerModule`](projects/ngx-uic/player/README.md)
 - [`NgxRangeModule`](projects/ngx-uic/range/README.md)
 - [`NgxScrollerModule`](projects/ngx-uic/scroller/README.md)
