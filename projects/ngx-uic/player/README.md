@@ -1,63 +1,66 @@
-# Player
+# NgxPlayerModule
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.0.0.
+The `NgxPlayerModule` provides a complete set of media playback utilities for Angular applications. It includes the `NgxPlayerComponent`, playback control directives, media quality selection, caption handling, fullscreen support, and formatting utilities for building custom audio and video players.
 
-## Code scaffolding
+The module supports native media playback as well as adaptive streaming through **HLS** and **MPEG-DASH** sources.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Features
 
-```bash
-ng generate component component-name
-```
+▶️ Audio & Video playback synchronization
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+📺 HLS (`.m3u8`) streaming support
 
-```bash
-ng generate --help
-```
+📡 MPEG-DASH (`.mpd`) streaming support
 
-## Building
+🚫 Automatic invalid source removal
 
-To build the library, run:
+🔄 Automatic source failover
 
-```bash
-ng build player
-```
+💾 Playback position preservation
 
-This command will compile your project, and the build artifacts will be placed in the `dist/` directory.
+🌐 Language-aware media sources filtering and selection
 
-### Publishing the Library
+✅ Automatic bitrate & resolution discovery
 
-Once the project is built, you can publish your library by following these steps:
+📊 Bitrate and resolution selection
 
-1. Navigate to the `dist` directory:
-   ```bash
-   cd dist/player
-   ```
+🎚️ Volume & mute controls
 
-2. Run the `npm publish` command to publish your library to the npm registry:
-   ```bash
-   npm publish
-   ```
+⚡ Playback speed controls
 
-## Running unit tests
+🔁 Loop mode
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+⏩ Seeking support
 
-```bash
-ng test
-```
+🖼️ Picture-in-Picture support
 
-## Running end-to-end tests
+🖥️ Fullscreen support
 
-For end-to-end (e2e) testing, run:
+🎞️ Caption track management
 
-```bash
-ng e2e
-```
+⏳ Reactive loading state detection
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+⏱️ Media time formatting pipe
 
-## Additional Resources
+## Components
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+* [`NgxPlayerComponent`](src/components/player/README.md)
+
+## Directives
+
+* [`NgxBitrateDirective`](src/directives/bitrate/README.md)
+* [`NgxCaptionDirective`](src/directives/caption/README.md)
+* [`NgxFullscreenDirective`](src/directives/fullscreen/README.md)
+* [`NgxLanguageDirective`](src/directives/language/README.md)
+* [`NgxMuteDirective`](src/directives/mute/README.md)
+* [`NgxPipDirective`](src/directives/pip/README.md)
+* [`NgxPlayDirective`](src/directives/play/README.md)
+* [`NgxResolutionDirective`](src/directives/resolution/README.md)
+* [`NgxSeekBarDirective`](src/directives/seekbar/README.md)
+* [`NgxSeekDirective`](src/directives/seek/README.md)
+* [`NgxSpeedDirective`](src/directives/speed/README.md)
+* [`NgxVolumeDirective`](src/directives/volume/README.md)
+
+## Pipes
+
+* [`NgxTimePipe`](src/pipes/time/README.md)
