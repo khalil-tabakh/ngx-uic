@@ -1,8 +1,8 @@
 import { DOCUMENT, Directive, ElementRef, booleanAttribute, effect, inject, input, resource, signal, untracked } from '@angular/core';
+import { NgxRangeComponent, between, percentage } from '@ngx-uic/range';
 import { MediaPlayer } from 'dashjs';
 import Hls from 'hls.js';
 import { NgxPlayerComponent } from '../../components/player/player.component';
-import { NgxRangeComponent, between, percentage } from '../../../../range/public-api';
 
 @Directive({
     selector: 'ngx-range[ngxSeekbar]',
