@@ -2,7 +2,6 @@
 import { Component, ElementRef, booleanAttribute, inject, input, provideZonelessChangeDetection, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NgxScrollerComponent } from './scroller.component';
-import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
     imports: [NgxScrollerComponent],
@@ -89,10 +88,10 @@ import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 class WrapperComponent {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-    readonly batch = input(1, { transform: batchAttribute });
+    readonly batch = input(1, { transform: (value: number | string) => Number(value) >= 1 ? Math.round(Number(value)) : 1 });
     readonly container = input<Element>();
     readonly emit = input(false);
-    readonly offset = input(0, { transform: offsetAttribute });
+    readonly offset = input(0, { transform: (value: number | string) => Number(value) >= 0 ? Math.round(Number(value)) : 0 });
     readonly overflow = input(false, { transform: booleanAttribute });
     readonly root = input(this.element);
     readonly rootMargin = input<string>();

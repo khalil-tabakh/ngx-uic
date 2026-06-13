@@ -1,5 +1,4 @@
 import { Component, ElementRef, Injector, afterNextRender, afterRenderEffect, booleanAttribute, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { batchAttribute, offsetAttribute } from '../../utils/transforms.util';
 
 @Component({
     selector: 'ngx-scroller, [ngx-scroller]',
@@ -11,13 +10,13 @@ export class NgxScrollerComponent<Item = unknown> {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private injector = inject(Injector);
 
-    readonly batch = input(1, { transform: batchAttribute });
+    readonly batch = input(1, { transform: (value: number | string) => Number(value) >= 1 ? Math.round(Number(value)) : 1 });
     readonly container = input<Element>(this.element);
     readonly emit = input(false, { transform: (value: boolean) => (this.autoEmit = false) || value });
     readonly items = input.required<Item[]>();
-    readonly offset = input(0, { transform: offsetAttribute });
+    readonly offset = input(0, { transform: (value: number | string) => Number(value) >= 0 ? Math.round(Number(value)) : 0 });
     readonly overflow = input(false, { transform: booleanAttribute });
-    readonly root = input<HTMLElement>(this.element);
+    readonly root = input(this.element);
     readonly rootMargin = input<IntersectionObserverInit['rootMargin']>();
     readonly scrollMargin = input<IntersectionObserverInit['scrollMargin']>();
     readonly threshold = input<IntersectionObserverInit['threshold']>();
