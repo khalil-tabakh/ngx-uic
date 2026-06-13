@@ -1,5 +1,5 @@
 import { DOCUMENT, Directive, effect, inject, signal } from '@angular/core';
-import { NgxPlayerComponent } from '../../../public-api';
+import { NgxPlayerComponent } from '../../components/player/player.component';
 
 @Directive({
     selector: '[ngxFullscreen]',

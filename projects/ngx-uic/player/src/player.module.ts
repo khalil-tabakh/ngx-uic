@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { NgxPlayerComponent } from './components/player/player.component';
-import { NgxSeekBarDirective } from './directives/seekbar/seekbar.directive';
 import { NgxBitrateDirective } from './directives/bitrate/bitrate.directive';
 import { NgxCaptionDirective } from './directives/caption/caption.directive';
 import { NgxFullscreenDirective } from './directives/fullscreen/fullscreen.directive';
@@ -11,6 +10,7 @@ import { NgxPipDirective } from './directives/pip/pip.directive';
 import { NgxPlayDirective } from './directives/play/play.directive';
 import { NgxResolutionDirective } from './directives/resolution/resolution.directive';
 import { NgxSeekDirective } from './directives/seek/seek.directive';
+import { NgxSeekBarDirective } from './directives/seekbar/seekbar.directive';
 import { NgxSpeedDirective } from './directives/speed/speed.directive';
 import { NgxVolumeDirective } from './directives/volume/volume.directive';
 import { NgxTimePipe } from './pipes/time/time.pipe';
@@ -18,7 +18,6 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
 @NgModule({
     imports: [
         NgxPlayerComponent,
-        NgxSeekBarDirective,
         NgxBitrateDirective,
         NgxCaptionDirective,
         NgxFullscreenDirective,
@@ -28,6 +27,7 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
         NgxPipDirective,
         NgxPlayDirective,
         NgxResolutionDirective,
+        NgxSeekBarDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
         NgxVolumeDirective,
@@ -35,7 +35,6 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
     ],
     exports: [
         NgxPlayerComponent,
-        NgxSeekBarDirective,
         NgxBitrateDirective,
         NgxCaptionDirective,
         NgxFullscreenDirective,
@@ -45,6 +44,7 @@ import { NgxTimePipe } from './pipes/time/time.pipe';
         NgxPipDirective,
         NgxPlayDirective,
         NgxResolutionDirective,
+        NgxSeekBarDirective,
         NgxSeekDirective,
         NgxSpeedDirective,
         NgxVolumeDirective,
