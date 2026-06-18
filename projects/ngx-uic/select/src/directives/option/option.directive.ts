@@ -12,6 +12,12 @@ export class NgxOptionDirective<T = unknown> {
     readonly value = input<T>();
 
     protected onToggle(): void {
-        this.select.value.set(this.value());
+        if (this.select.multi()) {
+            const selected = this.select.selected() as ReadonlyArray<NgxOptionDirective<T>>;
+            const selection = selected.includes(this) ? selected.filter((option) => option !== this) : selected.concat(this);
+            const options = this.select.options().filter((option) => selection.includes(option)); // Sort by initial order
+            if (this.value() === undefined) this.select.value.set([]);
+            else this.select.value.set(options.map((option) => option.value()));
+        } else this.select.value.set(this.value());
     }
 }

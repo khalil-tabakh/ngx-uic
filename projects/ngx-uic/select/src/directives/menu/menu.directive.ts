@@ -1,4 +1,5 @@
 import { Directive, ElementRef, inject } from '@angular/core';
+import { NgxSelectComponent } from '../../components/select/select.component';
 
 let id = 0;
 
@@ -9,6 +10,7 @@ let id = 0;
 })
 export class NgxMenuDirective {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    private select = inject(NgxSelectComponent);
 
     constructor() {
         this.element.id ||= `ngx-menu-${id++}`;
@@ -20,6 +22,8 @@ export class NgxMenuDirective {
     }
 
     onClose(): void {
-        this.element instanceof HTMLDialogElement ? this.element.close() : this.element.hidePopover();
+        if (!this.select.multi()) this.element instanceof HTMLDialogElement
+            ? this.element.close()
+            : this.element.hidePopover();
     }
 }
