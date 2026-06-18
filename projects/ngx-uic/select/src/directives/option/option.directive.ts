@@ -7,7 +7,7 @@ import { NgxSelectComponent } from '../../components/select/select.component';
     exportAs: 'ngxOption'
 })
 export class NgxOptionDirective<T = unknown> {
-    private select = inject(NgxSelectComponent);
+    private select = inject(NgxSelectComponent<boolean, unknown>);
 
     readonly value = input<T>();
 
