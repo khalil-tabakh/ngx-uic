@@ -77,6 +77,22 @@
                     }
                 }
             }
+        },
+        "select": {
+            "projectType": "library",
+            "root": "projects/ngx-uic/select",
+            "sourceRoot": "projects/ngx-uic/select/src",
+            "prefix": "ngx",
+            "architect": {
+                "test": {
+                    "builder": "@angular/build:unit-test",
+                    "options": {
+                        "buildTarget": "ngx-uic:build:development",
+                        "tsConfig": "projects/ngx-uic/select/tsconfig.spec.json",
+                        "coverage": true
+                    }
+                }
+            }
         }
     }
 }

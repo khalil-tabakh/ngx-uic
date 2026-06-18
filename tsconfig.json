@@ -10,7 +10,8 @@
         "paths": {
             "@ngx-uic/player": ["./dist/ngx-uic/player", "./projects/ngx-uic/player/public-api"],
             "@ngx-uic/range": ["./dist/ngx-uic/range", "./projects/ngx-uic/range/public-api"],
-            "@ngx-uic/scroller": ["./dist/ngx-uic/scroller", "./projects/ngx-uic/scroller/public-api"]
+            "@ngx-uic/scroller": ["./dist/ngx-uic/scroller", "./projects/ngx-uic/scroller/public-api"],
+            "@ngx-uic/select": ["./dist/ngx-uic/select", "./projects/ngx-uic/select/public-api"]
         },
         "skipLibCheck": true,
         "isolatedModules": true,
