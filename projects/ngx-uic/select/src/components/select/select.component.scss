@@ -1,0 +1,17 @@
+:host ::ng-deep {
+    [ngxmenu] {
+        overscroll-behavior: contain;
+        position: fixed;
+        position-area: bottom;
+        position-try:
+            bottom, bottom left, bottom right,
+            top, top left, top right,
+            left, right;
+
+        &::backdrop {
+            background: transparent;
+            overflow: hidden;
+            overscroll-behavior: contain;
+        }
+    }
+}
