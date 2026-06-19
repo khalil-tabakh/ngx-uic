@@ -10,12 +10,12 @@ export class NgxTriggerDirective {
     private select = inject(NgxSelectComponent);
 
     private bind$ = effect(() => {
-        const menu = this.select.menu().element;
-        if (menu instanceof HTMLDialogElement) {
-            const positionAnchor = getComputedStyle(menu).positionAnchor;
+        const popup = this.select.popup().element;
+        if (popup instanceof HTMLDialogElement) {
+            const positionAnchor = getComputedStyle(popup).positionAnchor;
             if (getComputedStyle(this.element).anchorName !== positionAnchor) this.element.style.setProperty('anchor-name', positionAnchor);
             if (!this.element.getAttribute('command')) this.element.setAttribute('command', 'show-modal');
-            if (!this.element.getAttribute('commandfor')) this.element.setAttribute('commandfor', menu.id);
-        } else if(!this.element.getAttribute('popovertarget')) this.element.setAttribute('popovertarget', menu.id);
+            if (!this.element.getAttribute('commandfor')) this.element.setAttribute('commandfor', popup.id);
+        } else if(!this.element.getAttribute('popovertarget')) this.element.setAttribute('popovertarget', popup.id);
     });
 }
