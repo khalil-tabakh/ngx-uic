@@ -12,6 +12,7 @@ export class NgxOptionDirective<T = unknown> {
     readonly value = input<T>();
 
     protected onToggle(): void {
+        const oldSelection = this.select.value();
         if (this.select.multi()) {
             const selected = this.select.selected() as ReadonlyArray<NgxOptionDirective<T>>;
             const selection = selected.includes(this) ? selected.filter((option) => option !== this) : selected.concat(this);
@@ -19,5 +20,7 @@ export class NgxOptionDirective<T = unknown> {
             if (this.value() === undefined) this.select.value.set([]);
             else this.select.value.set(options.map((option) => option.value()));
         } else this.select.value.set(this.value());
+        const newSelection = this.select.value();
+        if (newSelection !== oldSelection) this.select.onChange(newSelection);
     }
 }

@@ -1,4 +1,5 @@
-import { Component, ModelSignal, Signal, booleanAttribute, computed, contentChild, contentChildren, input, model } from '@angular/core';
+import { Component, ModelSignal, Signal, booleanAttribute, computed, contentChild, contentChildren, forwardRef, input, model } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { NgxOptionDirective } from '../../directives/option/option.directive';
 import { NgxPopupDirective } from '../../directives/popup/popup.directive';
 import { NgxTriggerDirective } from '../../directives/trigger/trigger.directive';
@@ -8,9 +9,14 @@ import { Multi, Selected, Value } from '../../utils/types.util';
     selector: 'ngx-select, [ngx-select]',
     templateUrl: './select.component.html',
     styleUrl: './select.component.scss',
-    exportAs: 'ngxSelect'
+    exportAs: 'ngxSelect',
+    providers: [{
+        provide: NG_VALUE_ACCESSOR,
+        useExisting: forwardRef(() => NgxSelectComponent),
+        multi: true
+    }]
 })
-export class NgxSelectComponent<M extends boolean | null | number | object | string | undefined, V> {
+export class NgxSelectComponent<M extends boolean | null | number | object | string | undefined, V> implements ControlValueAccessor {
     readonly multi = input(false as Multi<M>, {
         transform: (value: M) => {
             const result = booleanAttribute(value) as Multi<M>;
@@ -34,4 +40,29 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
             return this.options().find((option) => selection === option.value());
         }
     }) as Signal<Selected<M>>;
+
+    /* ControlValueAccessor */
+
+    onChange = (_: ReturnType<typeof this.value>): void => {};
+
+    onTouched = (): void => {};
+
+    registerOnChange(fn: typeof this.onChange): void {
+        this.onChange = fn;
+    }
+
+    registerOnTouched(fn: typeof this.onTouched): void {
+        this.onTouched = fn;
+    }
+
+    setDisabledState(isDisabled: boolean): void {
+        const popup = this.popup().element;
+        popup instanceof HTMLDialogElement ? popup.close() : popup.hidePopover();
+        const trigger = this.trigger().element;
+        trigger instanceof HTMLButtonElement ? (trigger.disabled = isDisabled) : (trigger.inert = isDisabled);
+    }
+
+    writeValue(value: ReturnType<typeof this.value>): void {
+        this.value.set(value);
+    }
 }

@@ -19,9 +19,9 @@ export class NgxPopupDirective {
     
     readonly expanded = model(false);
 
-    private toggle$ = effect(() => {
-        const expanded = this.expanded();
-        expanded ? this.element.focus() : this.element.blur();
+    private toggle$ = effect((onCleanup) => {
+        this.expanded() ? this.element.focus() : this.element.blur();
+        onCleanup(() => !this.expanded() && this.select.onTouched());
     });
 
     constructor() {
