@@ -18,7 +18,7 @@ export class NgxSeekBarDirective {
     private document = inject(DOCUMENT);
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private player = inject(NgxPlayerComponent);
-    private range = inject(NgxRangeComponent);
+    private range = inject(NgxRangeComponent<'single'>);
 
     readonly regenerate = input(false, { transform: booleanAttribute });
     readonly thumbnail = input<readonly number[] | number | string>([]);

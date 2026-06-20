@@ -9,8 +9,8 @@
 </div>
 <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
     @let isDouble = type() === 'double';
-    @let lower = isDouble ? this.lower() : value();
-    @let upper = isDouble ? this.upper() : value();
+    @let lower = isDouble ? this.lower() : +value();
+    @let upper = isDouble ? this.upper() : +value();
     @if (isDouble) {
         <label class="thumb" tabindex="0" [style.--lower]="(lower - min()) / (max() - min()) * 100" #thumbRef>
             <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
