@@ -1,4 +1,4 @@
-import { Component, ModelSignal, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, forwardRef, input, model } from '@angular/core';
+import { Component, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, forwardRef, input, model } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FormValueControl } from '@angular/forms/signals';
 import { NgxOptionDirective } from '../../directives/option/option.directive';
@@ -11,6 +11,7 @@ import { Multi, Selected, Value } from '../../utils/types.util';
     templateUrl: './select.component.html',
     styleUrl: './select.component.scss',
     exportAs: 'ngxSelect',
+    host: { '[aria-disabled]': 'disabled()' },
     providers: [{
         provide: NG_VALUE_ACCESSOR,
         useExisting: forwardRef(() => NgxSelectComponent),
@@ -27,7 +28,7 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
     });
 
     readonly disabled = model(false);
-    readonly value = model() as ModelSignal<Value<M, V>>;
+    readonly value = model(undefined as Value<M, V>);
 
     readonly options = contentChildren(NgxOptionDirective, { descendants: true });
     readonly popup = contentChild.required(NgxPopupDirective);

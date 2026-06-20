@@ -1,15 +1,51 @@
-import { Directive, inject, input } from '@angular/core';
+import { Directive, ElementRef, booleanAttribute, computed, inject, input, resource, signal } from '@angular/core';
 import { NgxSelectComponent } from '../../components/select/select.component';
+
+let id = 0;
 
 @Directive({
     selector: '[ngxOption]',
-    host: { '(click)': 'onToggle()' },
-    exportAs: 'ngxOption'
+    exportAs: 'ngxOption',
+    host: {
+        'role': 'option',
+        '[aria-disabled]': 'disabled()',
+        '[aria-selected]': 'selected()',
+        '[attr.data-active]': 'active.value()',
+        '(click)': '!disabled() && onToggle()'
+    }
 })
 export class NgxOptionDirective<T = unknown> {
+    readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private select = inject(NgxSelectComponent<boolean, unknown>);
 
+    readonly disabled = input(false, { transform: booleanAttribute });
     readonly value = input<T>();
+
+    protected active = resource({
+        params: () => ({ popup: this.select.popup().element, option: this.element }),
+        stream: ({ abortSignal, params }) => {
+            const { popup, option } = params;
+            const response = signal({ value: popup.ariaActiveDescendantElement === option });
+            const mutation$ = new MutationObserver(() => response.set({ value: popup.ariaActiveDescendantElement === option }));
+            mutation$.observe(popup, { attributeFilter: ['aria-activedescendant'] });
+            abortSignal.addEventListener('abort', () => mutation$.disconnect(), { once: true });
+            return response;
+        }
+    });
+
+    readonly selected = computed(() => {
+        if (this.select.multi()) {
+            const selected = this.select.selected() as ReadonlyArray<NgxOptionDirective<T>>;
+            return selected.includes(this);
+        } else {
+            const selected = this.select.selected() as NgxOptionDirective<T>;
+            return selected === this;
+        };
+    });
+
+    constructor() {
+        this.element.id ||= `ngx-option-${id++}`;
+    }
 
     protected onToggle(): void {
         const oldSelection = this.select.value();

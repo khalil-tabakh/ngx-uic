@@ -5,14 +5,18 @@ import { NgxSelectComponent } from '../../components/select/select.component';
     selector: '[ngxTrigger]',
     exportAs: 'ngxTrigger',
     host: {
+        'role': 'combobox',
         'tabindex': '0',
+        '[aria-controls]': 'select.popup().element.id',
+        '[aria-expanded]': 'select.popup().expanded()',
+        '[aria-haspopup]': '"listbox"',
         '(click)': 'onOpen()',
         '(keypress)': 'onOpen($event)'
     }
 })
 export class NgxTriggerDirective {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    private select = inject(NgxSelectComponent);
+    protected select = inject(NgxSelectComponent);
 
     private bind$ = effect(() => {
         const popup = this.select.popup().element;
@@ -22,6 +26,7 @@ export class NgxTriggerDirective {
             if (!this.element.getAttribute('command')) this.element.setAttribute('command', 'show-modal');
             if (!this.element.getAttribute('commandfor')) this.element.setAttribute('commandfor', popup.id);
         } else if(!this.element.getAttribute('popovertarget')) this.element.setAttribute('popovertarget', popup.id);
+        this.element.ariaControlsElements = [popup];
     });
 
     protected onOpen(event?: KeyboardEvent): void {
