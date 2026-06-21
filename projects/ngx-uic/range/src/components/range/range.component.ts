@@ -47,7 +47,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     });
     protected upper = linkedSignal({
         source: this.type,
-        computation: (type) => type === 'double' ? (this.value() as [number, number])[1] : NaN
+        computation: (type) => type === 'double' ? (this.value() as [number, number])[1] : +this.value()
     });
 
     readonly marks = computed<readonly number[]>(() => {
@@ -158,29 +158,29 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
             return;
         } else event.stopPropagation(); // Prevent infinite event propagation loop
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
-        const oldLower = this.lower(), oldValue = this.value(), oldUpper = this.upper();
+        const oldLower = this.lower(), oldUpper = this.upper();
         let oldSignal: WritableSignal<number> | undefined = undefined;
         const controller = new AbortController();
         slider.setPointerCapture(event.pointerId);
         slider.addEventListener('pointermove', (event) => {
             const newSignal = ((offsetX: number) => {
-                if (this.type() === 'single') return this.value as WritableSignal<number>;
+                if (this.type() === 'single') return this.upper;
                 else if (offsetX < thumbs[0].offsetLeft) return this.lower;
                 else if (offsetX > thumbs[1].offsetLeft) return this.upper;
                 else if (oldSignal) return oldSignal;
                 else return distance(offsetX, thumbs[0].offsetLeft) < distance(offsetX, thumbs[1].offsetLeft) ? this.lower : this.upper;
             })(event.offsetX);
-            const oldStep = newSignal();
+            const oldValue = newSignal();
             const step = (this.max() - this.min()) * clamp(event.offsetX / slider.offsetWidth, 0, 1) + this.min();
-            const newStep = closest(step, this.steps());
-            newSignal.set(newStep);
+            const newValue = closest(step, this.steps());
+            newSignal.set(newValue);
             oldSignal = newSignal;
-            this.value.update((value) => (this.type() === 'double' ? [this.lower(), this.upper()] : value) as ReturnType<typeof this.value>);
-            if (newStep !== oldStep) this.element.dispatchEvent(new Event('input'));
+            this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
+            if (newValue !== oldValue) this.element.dispatchEvent(new Event('input'));
         }, { signal: controller.signal });
         slider.addEventListener('pointerup', () => {
-            const newLower = this.lower(), newValue = this.value(), newUpper = this.upper();
-            if (newLower !== oldLower || newValue !== oldValue || newUpper !== oldUpper) this.element.dispatchEvent(new Event('change'));
+            const newLower = this.lower(), newUpper = this.upper();
+            if ((this.type() === 'single' && newLower !== oldLower) || newUpper !== oldUpper) this.element.dispatchEvent(new Event('change'));
             controller.abort();
             this.onTouched();
         }, { signal: controller.signal });

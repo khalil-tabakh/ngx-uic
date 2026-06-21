@@ -8,11 +8,21 @@
     }
 </div>
 <div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
-    @let isDouble = type() === 'double';
-    @let lower = isDouble ? this.lower() : +value();
-    @let upper = isDouble ? this.upper() : +value();
-    @if (isDouble) {
-        <label class="thumb" tabindex="0" [style.--lower]="(lower - min()) / (max() - min()) * 100" #thumbRef>
+    @let lower = type() === 'double' ? this.lower() : +this.value();
+    @let upper = this.upper();
+    @if (type() === 'double') {
+        <label
+            class="thumb"
+            role="slider"
+            tabindex="0"
+            aria-orientation="horizontal"
+            [aria-valuemin]="min()"
+            [aria-valuenow]="lower"
+            [aria-valuemax]="upper"
+            [style.--lower]="(lower - min()) / (max() - min()) * 100"
+            (keydown)="onUpdate($event, this.lower)"
+            #thumbRef
+        >
             <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="lower" />
         </label>
     }
@@ -20,7 +30,18 @@
         @let left = (mark - min()) / (max() - min()) * 100;
         <div class="mark" [class.mark--lower]="mark < lower" [class.mark--upper]="mark > upper" [style.--mark-left]="left"></div>
     }
-    <label class="thumb" tabindex="0" [style.--upper]="(upper - min()) / (max() - min()) * 100" #thumbRef>
+    <label
+        class="thumb"
+        role="slider"
+        tabindex="0"
+        aria-orientation="horizontal"
+        [aria-valuemin]="lower"
+        [aria-valuenow]="upper"
+        [aria-valuemax]="max()"
+        [style.--upper]="(upper - min()) / (max() - min()) * 100"
+        (keydown)="onUpdate($event, this.upper)"
+        #thumbRef
+    >
         <input hidden type="range" [min]="min()" [max]="max()" [step]="step().toString()" [value]="upper" />
     </label>
 </div>
