@@ -26,6 +26,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     readonly relative = input(undefined, { transform: numberAttribute });
     readonly split = input<readonly number[] | number | string>([]);
     readonly step = input<readonly number[] | number | string>(1);
+    readonly stride = input(1, { transform: numberAttribute });
     readonly type = input('single' as T, {
         transform: (value: T) => {
             this.reset(value);
@@ -185,6 +186,57 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
             this.onTouched();
         }, { signal: controller.signal });
         slider.dispatchEvent(new PointerEvent('pointermove', event));
+    }
+
+    protected onUpdate(event: KeyboardEvent, signal: WritableSignal<number>): void {
+        const thumb = event.target as HTMLElement;
+        const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
+        const steps = this.steps();
+        const stride = steps.length ? Math.round(this.stride()) : this.stride();
+        const index = steps.indexOf(signal());
+        const oldValue = signal();
+        switch (event.code) {
+            case 'ArrowDown':
+            case 'ArrowLeft':
+                event.preventDefault();
+                const previous = steps[index - stride] ?? steps.at(0) ?? Math.max(this.min(), stride);
+                if (this.type() === 'double' && thumb !== thumbs[0] && previous < this.lower()) {
+                    thumbs[0].focus();
+                    thumbs[0].dispatchEvent(new KeyboardEvent('keydown', event));
+                } else {
+                    signal.set(previous);
+                    this.onTouched();
+                }
+                break;
+            case 'ArrowRight':
+            case 'ArrowUp':
+                event.preventDefault();
+                const next = steps[index + stride] ?? steps.at(-1) ?? Math.min(this.max(), stride);
+                if (this.type() === 'double' && thumb !== thumbs[1] && next > this.upper()) {
+                    thumbs[1].focus();
+                    thumbs[1].dispatchEvent(new KeyboardEvent('keydown', event));
+                } else {
+                    signal.set(next);
+                    this.onTouched();
+                }
+                break;
+            case 'End':
+                event.preventDefault();
+                signal.set(+thumb.ariaValueMax!);
+                this.onTouched();
+                break;
+            case 'Home':
+                event.preventDefault();
+                signal.set(+thumb.ariaValueMin!);
+                this.onTouched();
+                break;
+        }
+        this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
+        const newValue = signal();
+        if (oldValue !== newValue) {
+            this.element.dispatchEvent(new Event('change'));
+            this.element.dispatchEvent(new Event('input'));
+        }
     }
 
     /* ControlValueAccessor */
