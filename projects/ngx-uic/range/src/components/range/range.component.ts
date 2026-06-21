@@ -7,10 +7,7 @@ import { Value } from '../../utils/types.util';
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: {
-        '(input)': 'onChange(value())',
-        '(pointerdown)': 'onSliding($event)'
-    },
+    host: { '(pointerdown)': 'onSliding($event)' },
     providers: [{
         provide: NG_VALUE_ACCESSOR,
         useExisting: forwardRef(() => NgxRangeComponent),
@@ -176,8 +173,11 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
             const newValue = closest(step, this.steps());
             newSignal.set(newValue);
             oldSignal = newSignal;
-            this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
-            if (newValue !== oldValue) this.element.dispatchEvent(new Event('input'));
+            if (newValue !== oldValue) {
+                this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
+                this.onChange(this.value());
+                this.element.dispatchEvent(new Event('input'));
+            }
         }, { signal: controller.signal });
         slider.addEventListener('pointerup', () => {
             const newLower = this.lower(), newUpper = this.upper();
@@ -231,11 +231,12 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
                 this.onTouched();
                 break;
         }
-        this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
         const newValue = signal();
         if (oldValue !== newValue) {
-            this.element.dispatchEvent(new Event('change'));
+            this.value.set((this.type() === 'double' ? [this.lower(), this.upper()] : this.upper()) as ReturnType<typeof this.value>);
+            this.onChange(this.value());
             this.element.dispatchEvent(new Event('input'));
+            this.element.dispatchEvent(new Event('change'));
         }
     }
 
@@ -268,6 +269,15 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     }
 
     reset(type = this.type()): void {
-        this.value.set((type === 'double' ? [this.min(), this.max()] : this.origin()) as ReturnType<typeof this.value>);
+        const oldLower = this.lower(), oldUpper = this.upper();
+        if (this.type() === 'double') this.lower.set(this.min());
+        this.upper.set(this.type() === 'double' ? this.max() : this.origin());
+        const newLower = this.lower(), newUpper = this.upper();
+        if ((this.type() === 'double' && newLower !== oldLower) || newUpper !== oldUpper) {
+            this.value.set((type === 'double' ? [this.min(), this.max()] : this.origin()) as ReturnType<typeof this.value>);
+            this.onChange(this.value());
+            this.element.dispatchEvent(new Event('input'));
+            this.element.dispatchEvent(new Event('change'));
+        }
     }
 }
