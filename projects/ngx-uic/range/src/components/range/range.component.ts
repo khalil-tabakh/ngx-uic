@@ -1,4 +1,5 @@
-import { Component, ElementRef, WritableSignal, computed, effect, inject, input, linkedSignal, model, numberAttribute, resource, signal, viewChild, viewChildren } from '@angular/core';
+import { Component, ElementRef, WritableSignal, computed, effect, forwardRef, inject, input, linkedSignal, model, numberAttribute, resource, signal, viewChild, viewChildren } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { between, clamp, closest, distance, percentage } from '../../utils/functions.util';
 import { Value } from '../../utils/types.util';
 
@@ -6,9 +7,17 @@ import { Value } from '../../utils/types.util';
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onSliding($event)' }
+    host: {
+        '(input)': 'onChange(value())',
+        '(pointerdown)': 'onSliding($event)'
+    },
+    providers: [{
+        provide: NG_VALUE_ACCESSOR,
+        useExisting: forwardRef(() => NgxRangeComponent),
+        multi: true
+    }]
 })
-export class NgxRangeComponent<T extends 'single' | 'double'> {
+export class NgxRangeComponent<T extends 'single' | 'double'> implements ControlValueAccessor {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
     readonly mark = input<readonly number[] | number | string>([]);
@@ -24,6 +33,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> {
         }
     });
 
+    readonly disabled = model(false);
     readonly value = model(50 as Value<T>);
 
     readonly segmentRefs = viewChildren<ElementRef<HTMLElement>>('segmentRef');
@@ -172,7 +182,30 @@ export class NgxRangeComponent<T extends 'single' | 'double'> {
             const newLower = this.lower(), newValue = this.value(), newUpper = this.upper();
             if (newLower !== oldLower || newValue !== oldValue || newUpper !== oldUpper) this.element.dispatchEvent(new Event('change'));
             controller.abort();
+            this.onTouched();
         }, { signal: controller.signal });
         slider.dispatchEvent(new PointerEvent('pointermove', event));
+    }
+
+    /* ControlValueAccessor */
+
+    onChange = (_: ReturnType<typeof this.value>): void => {};
+
+    onTouched = (): void => {};
+
+    registerOnChange(fn: typeof this.onChange): void {
+        this.onChange = fn;
+    }
+
+    registerOnTouched(fn: typeof this.onTouched): void {
+        this.onTouched = fn;
+    }
+
+    setDisabledState(isDisabled: boolean): void {
+        this.disabled.set(isDisabled);
+    }
+
+    writeValue(value: ReturnType<typeof this.value>): void {
+        this.value.set(value);
     }
 }
