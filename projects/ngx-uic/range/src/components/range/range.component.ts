@@ -28,7 +28,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     readonly step = input<readonly number[] | number | string>(1);
     readonly type = input('single' as T, {
         transform: (value: T) => {
-            this.value.set((value === 'double' ? [25, 75] : 50) as ReturnType<typeof this.value>);
+            this.reset(value);
             return value;
         }
     });
@@ -139,7 +139,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
                 let progress = value as number;
                 if (!between(progress, min, max)) progress = origin;
                 else if (!steps.includes(progress)) progress = closest(progress, steps);
-                return value as ReturnType<typeof this.value>;
+                return progress as ReturnType<typeof this.value>;
             } else {
                 let [lower, upper] = value as [number, number];
                 if (!between(lower, min, max)) lower = min;
@@ -207,5 +207,15 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
 
     writeValue(value: ReturnType<typeof this.value>): void {
         this.value.set(value);
+    }
+
+    /* FormValueControl */
+
+    focus(options?: FocusOptions): void {
+        this.thumbRefs().at(0)?.nativeElement.focus(options);
+    }
+
+    reset(type = this.type()): void {
+        this.value.set((type === 'double' ? [this.min(), this.max()] : this.origin()) as ReturnType<typeof this.value>);
     }
 }
