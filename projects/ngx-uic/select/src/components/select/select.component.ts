@@ -10,8 +10,7 @@ import { Multi, Selected, Value } from '../../utils/types.util';
     selector: 'ngx-select, [ngx-select]',
     templateUrl: './select.component.html',
     styleUrl: './select.component.scss',
-    exportAs: 'ngxSelect',
-    host: { '[aria-disabled]': 'disabled()' }
+    exportAs: 'ngxSelect'
 })
 export class NgxSelectComponent<M extends boolean | null | number | object | string | undefined, V> implements ControlValueAccessor, FormValueControl<Value<M, V>> {
     private ngControl = inject(NgControl, { optional: true, self: true });

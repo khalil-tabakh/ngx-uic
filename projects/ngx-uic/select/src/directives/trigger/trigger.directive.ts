@@ -8,6 +8,7 @@ import { NgxSelectComponent } from '../../components/select/select.component';
         'role': 'combobox',
         'tabindex': '0',
         '[aria-controls]': 'select.popup().element.id',
+        '[aria-disabled]': 'select.disabled()',
         '[aria-expanded]': 'select.popup().expanded()',
         '[aria-haspopup]': '"listbox"',
         '(click)': 'onOpen()',
