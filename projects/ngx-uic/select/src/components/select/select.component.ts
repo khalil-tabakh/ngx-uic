@@ -1,5 +1,5 @@
-import { Component, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, forwardRef, input, model } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Component, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, inject, input, model } from '@angular/core';
+import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { FormValueControl } from '@angular/forms/signals';
 import { NgxOptionDirective } from '../../directives/option/option.directive';
 import { NgxPopupDirective } from '../../directives/popup/popup.directive';
@@ -11,18 +11,15 @@ import { Multi, Selected, Value } from '../../utils/types.util';
     templateUrl: './select.component.html',
     styleUrl: './select.component.scss',
     exportAs: 'ngxSelect',
-    host: { '[aria-disabled]': 'disabled()' },
-    providers: [{
-        provide: NG_VALUE_ACCESSOR,
-        useExisting: forwardRef(() => NgxSelectComponent),
-        multi: true
-    }]
+    host: { '[aria-disabled]': 'disabled()' }
 })
 export class NgxSelectComponent<M extends boolean | null | number | object | string | undefined, V> implements ControlValueAccessor, FormValueControl<Value<M, V>> {
+    private ngControl = inject(NgControl, { optional: true, self: true });
+
     readonly multi = input(false as Multi<M>, {
         transform: (value: M) => {
             const multi = booleanAttribute(value) as Multi<M>;
-            this.reset(multi);
+            this.value.set((multi ? [] : undefined) as ReturnType<typeof this.value>);
             return multi;
         }
     });
@@ -53,6 +50,10 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
             : trigger.inert = this.disabled();
     });
 
+    constructor() {
+        if (this.ngControl && !this.ngControl.control) this.ngControl.valueAccessor = this;
+    }
+
     /* ControlValueAccessor */
 
     onChange = (_: ReturnType<typeof this.value>): void => {};
@@ -79,9 +80,5 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
 
     focus(options?: FocusOptions): void {
         this.trigger().element.focus(options);
-    }
-
-    reset(multi = this.multi()): void {
-        this.value.set((multi ? [] : undefined) as ReturnType<typeof this.value>);
     }
 }
