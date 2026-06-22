@@ -150,6 +150,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     }
 
     protected onSliding(event: PointerEvent): void {
+        if (this.disabled()) return;
         const slider = this.sliderRef().nativeElement;
         if (slider !== event.target) {
             slider.dispatchEvent(new PointerEvent('pointerdown', event));
@@ -189,6 +190,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     }
 
     protected onUpdate(event: KeyboardEvent, signal: WritableSignal<number>): void {
+        if (this.disabled()) return;
         const thumb = event.target as HTMLElement;
         const thumbs = this.thumbRefs().map((thumbRef) => thumbRef.nativeElement);
         const steps = this.steps();

@@ -23,6 +23,14 @@ $track-height: var(--track-height, 0.5rem);
         }
     }
 
+    &:has([aria-disabled="true"]) {
+        cursor: default;
+
+        .thumb {
+            cursor: default;
+        }
+    }
+
     & > * {
         grid-area: 1 / 1;
     }
