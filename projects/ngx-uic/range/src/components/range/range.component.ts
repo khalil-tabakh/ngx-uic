@@ -1,5 +1,5 @@
-import { Component, ElementRef, WritableSignal, computed, effect, forwardRef, inject, input, linkedSignal, model, numberAttribute, resource, signal, viewChild, viewChildren } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Component, ElementRef, WritableSignal, computed, effect, inject, input, linkedSignal, model, numberAttribute, resource, signal, viewChild, viewChildren } from '@angular/core';
+import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { between, clamp, closest, distance, percentage } from '../../utils/functions.util';
 import { Value } from '../../utils/types.util';
 
@@ -7,15 +7,11 @@ import { Value } from '../../utils/types.util';
     selector: 'ngx-range',
     templateUrl: './range.component.html',
     styleUrl: './range.component.scss',
-    host: { '(pointerdown)': 'onSliding($event)' },
-    providers: [{
-        provide: NG_VALUE_ACCESSOR,
-        useExisting: forwardRef(() => NgxRangeComponent),
-        multi: true
-    }]
+    host: { '(pointerdown)': 'onSliding($event)' }
 })
 export class NgxRangeComponent<T extends 'single' | 'double'> implements ControlValueAccessor {
     private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    private ngControl = inject(NgControl, { optional: true, self: true });
 
     readonly mark = input<readonly number[] | number | string>([]);
     readonly max = input(100, { transform: numberAttribute });
@@ -26,7 +22,7 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
     readonly stride = input(1, { transform: numberAttribute });
     readonly type = input('single' as T, {
         transform: (value: T) => {
-            this.reset(value);
+            this.value.set((value === 'double' ? [25, 75] : 50) as ReturnType<typeof this.value>);
             return value;
         }
     });
@@ -149,6 +145,10 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
         });
     });
 
+    constructor() {
+        if (this.ngControl && !this.ngControl.control) this.ngControl.valueAccessor = this;
+    }
+
     protected onSliding(event: PointerEvent): void {
         const slider = this.sliderRef().nativeElement;
         if (slider !== event.target) {
@@ -266,18 +266,5 @@ export class NgxRangeComponent<T extends 'single' | 'double'> implements Control
 
     focus(options?: FocusOptions): void {
         this.thumbRefs().at(0)?.nativeElement.focus(options);
-    }
-
-    reset(type = this.type()): void {
-        const oldLower = this.lower(), oldUpper = this.upper();
-        if (this.type() === 'double') this.lower.set(this.min());
-        this.upper.set(this.type() === 'double' ? this.max() : this.origin());
-        const newLower = this.lower(), newUpper = this.upper();
-        if ((this.type() === 'double' && newLower !== oldLower) || newUpper !== oldUpper) {
-            this.value.set((type === 'double' ? [this.min(), this.max()] : this.origin()) as ReturnType<typeof this.value>);
-            this.onChange(this.value());
-            this.element.dispatchEvent(new Event('input'));
-            this.element.dispatchEvent(new Event('change'));
-        }
     }
 }
