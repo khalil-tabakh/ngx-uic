@@ -1,4 +1,4 @@
-import { Directive, ElementRef, effect, inject, model, resource, signal } from '@angular/core';
+import { Directive, ElementRef, inject, model, resource, signal } from '@angular/core';
 import { NgxSelectComponent } from '../../components/select/select.component';
 
 let id = 0;
@@ -13,7 +13,7 @@ let id = 0;
         '[aria-multiselectable]': 'select.multi()',
         '(click)': 'onClose()',
         '(keypress)': 'onClose($event)',
-        '(toggle)': 'expanded.set($event.newState === "open")'
+        '(toggle)': 'onToggle($event)'
     },
 })
 export class NgxPopupDirective {
@@ -47,12 +47,6 @@ export class NgxPopupDirective {
         }
     }).asReadonly();
 
-    private toggle$ = effect((onCleanup) => {
-        this.expanded() ? this.element.focus() : this.element.blur();
-        this.element.ariaActiveDescendantElement = this.expanded() ? this.select.options().at(0)?.element || null : null;
-        onCleanup(() => !this.expanded() && this.select.onTouched());
-    });
-
     constructor() {
         this.element.id ||= `ngx-popup-${id++}`;
         const positionAnchor = `--${this.element.id}`;
@@ -64,5 +58,12 @@ export class NgxPopupDirective {
     protected onClose(event?: KeyboardEvent): void {
         if (event && event.code !== 'Enter') return;
         if (!this.select.multi()) this.element instanceof HTMLDialogElement ? this.element.close() : this.element.hidePopover();
+    }
+
+    protected onToggle(event: ToggleEvent): void {
+        this.expanded.set(event.newState === 'open');
+        this.expanded() ? this.element.focus() : this.element.blur();
+        this.element.ariaActiveDescendantElement = this.expanded() ? this.select.options().at(0)?.element || null : null;
+        if (!this.expanded()) this.select.onTouched();
     }
 }
