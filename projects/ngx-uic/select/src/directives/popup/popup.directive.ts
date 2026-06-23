@@ -30,12 +30,14 @@ export class NgxPopupDirective {
             this.element.addEventListener('keydown', (event) => {
                 switch (event.code) {
                     case 'ArrowDown':
+                        event.preventDefault();
                         response.update(({ value: option }) => {
                             const index = options.indexOf(option!);
                             return ({ value: options.at(index - 1) });
                         });
                         break;
                     case 'ArrowUp':
+                        event.preventDefault();
                         response.update(({ value: option }) => {
                             const index = options.indexOf(option!);
                             return ({ value: options.at(index + 1 >= options.length ? 0 : index + 1) });
