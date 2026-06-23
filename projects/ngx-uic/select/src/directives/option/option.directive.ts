@@ -57,6 +57,10 @@ export class NgxOptionDirective<T = unknown> {
             else this.select.value.set(options.map((option) => option.value()));
         } else this.select.value.set(this.value());
         const newSelection = this.select.value();
-        if (newSelection !== oldSelection) this.select.onChange(newSelection);
+        if (newSelection !== oldSelection) {
+            this.select.onChange(newSelection);
+            this.element.dispatchEvent(new Event('input'));
+            this.element.dispatchEvent(new Event('change'));
+        }
     }
 }
