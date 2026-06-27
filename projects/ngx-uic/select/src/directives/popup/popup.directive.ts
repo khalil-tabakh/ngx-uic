@@ -1,4 +1,4 @@
-import { Directive, ElementRef, inject, model, resource, signal } from '@angular/core';
+import { Directive, ElementRef, inject, linkedSignal, model } from '@angular/core';
 import { NgxSelectComponent } from '../../components/select/select.component';
 
 let id = 0;
@@ -9,45 +9,23 @@ let id = 0;
     host: {
         'role': 'listbox',
         'tabindex': '0',
-        '[aria-activedescendant]': 'active.value()?.element?.id',
+        '[aria-activedescendant]': 'active()?.element?.id',
         '[aria-multiselectable]': 'select.multi()',
-        '(click)': 'onClose()',
-        '(keypress)': 'onClose($event)',
+        '(keydown)': 'onSelect($event)',
+        '(pointerup)': '$event.target !== element && onClose()',
         '(toggle)': 'onToggle($event)'
     },
 })
 export class NgxPopupDirective {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     protected select = inject(NgxSelectComponent);
-    
+
     readonly expanded = model(false);
 
-    protected active = resource({
-        params: () => ({ expanded: this.expanded(), options: this.select.options() }),
-        stream: ({ abortSignal, params }) => {
-            const { expanded, options } = params;
-            const response = signal({ value: expanded ? options.at(0) : undefined });
-            this.element.addEventListener('keydown', (event) => {
-                switch (event.code) {
-                    case 'ArrowDown':
-                        event.preventDefault();
-                        response.update(({ value: option }) => {
-                            const index = options.indexOf(option!);
-                            return ({ value: options.at(index - 1) });
-                        });
-                        break;
-                    case 'ArrowUp':
-                        event.preventDefault();
-                        response.update(({ value: option }) => {
-                            const index = options.indexOf(option!);
-                            return ({ value: options.at(index + 1 >= options.length ? 0 : index + 1) });
-                        });
-                        break;
-                }
-            }, { signal: abortSignal });
-            return response;
-        }
-    }).asReadonly();
+    readonly active = linkedSignal({
+        source: () => ({ expanded: this.expanded(), options: this.select.options() }),
+        computation: ({ expanded, options }) => expanded ? options.at(0) : undefined
+    });
 
     constructor() {
         this.element.id ||= `ngx-popup-${id++}`;
@@ -57,9 +35,44 @@ export class NgxPopupDirective {
         else this.element.popover = 'auto';
     }
 
-    protected onClose(event?: KeyboardEvent): void {
-        if (event && event.code !== 'Enter') return;
+    protected onClose(): void {
         if (!this.select.multi()) this.element instanceof HTMLDialogElement ? this.element.close() : this.element.hidePopover();
+    }
+
+    protected onSelect(event: KeyboardEvent): void {
+        const options = this.select.options();
+        switch (event.code) {
+            case 'ArrowDown':
+                event.preventDefault();
+                this.active.update((active) => {
+                    const index = options.indexOf(active!);
+                    for (let i = index + 1; i !== index; ++i) {
+                        if (i >= options.length) i = -1;
+                        else if (options.at(i)?.disabled()) continue;
+                        else return options.at(i);
+                    } return undefined;
+                });
+                this.element.ariaActiveDescendantElement = this.active()?.element || null;
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                this.active.update((active) => {
+                    const index = options.indexOf(active!);
+                    for (let i = index - 1; i !== index; --i) {
+                        if (i < 0) i = options.length;
+                        else if (options.at(i)?.disabled()) continue;
+                        else return options.at(i);
+                    } return undefined;
+                });
+                this.element.ariaActiveDescendantElement = this.active()?.element || null;
+                break;
+            case 'Enter':
+                event.preventDefault();
+                const option = this.active();
+                if (option && !option.disabled()) this.select.toggle(option.value());
+                this.onClose();
+                break;
+        }
     }
 
     protected onToggle(event: ToggleEvent): void {

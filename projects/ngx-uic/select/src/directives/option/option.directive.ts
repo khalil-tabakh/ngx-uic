@@ -11,7 +11,8 @@ let id = 0;
         '[aria-disabled]': 'disabled()',
         '[aria-selected]': 'selected()',
         '[attr.data-active]': 'active.value()',
-        '(click)': '!disabled() && select.toggle(value())'
+        '(pointerenter)': 'onActivate()',
+        '(pointerup)': 'disabled() ? $event.stopPropagation() : select.toggle(value())'
     }
 })
 export class NgxOptionDirective<T = unknown> {
@@ -45,5 +46,13 @@ export class NgxOptionDirective<T = unknown> {
 
     constructor() {
         this.element.id ||= `ngx-option-${id++}`;
+    }
+
+    protected onActivate(): void {
+        const popup = this.select.popup();
+        if (popup && !this.disabled()) {
+            popup.active.set(this);
+            popup.element.ariaActiveDescendantElement = this.element;
+        }
     }
 }
