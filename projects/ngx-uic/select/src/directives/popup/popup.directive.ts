@@ -1,4 +1,4 @@
-import { Directive, ElementRef, inject, linkedSignal, model } from '@angular/core';
+import { Directive, ElementRef, effect, inject, linkedSignal, model } from '@angular/core';
 import { NgxSelectComponent } from '../../components/select/select.component';
 
 let id = 0;
@@ -13,7 +13,7 @@ let id = 0;
         '[aria-multiselectable]': 'select.multi()',
         '(keydown)': 'onSelect($event)',
         '(pointerup)': '$event.target !== element && onClose()',
-        '(toggle)': 'onToggle($event)'
+        '(toggle)': 'expanded.set($event.newState === "open")'
     },
 })
 export class NgxPopupDirective {
@@ -25,6 +25,12 @@ export class NgxPopupDirective {
     readonly active = linkedSignal({
         source: () => ({ expanded: this.expanded(), options: this.select.options() }),
         computation: ({ expanded, options }) => expanded ? options.at(0) : undefined
+    });
+
+    private toggle$ = effect((onCleanup) => {
+        this.expanded() ? this.element.focus() : this.element.blur();
+        this.element.ariaActiveDescendantElement = this.expanded() ? this.select.options().at(0)?.element || null : null;
+        onCleanup(() => !this.expanded() && this.select.onTouched());
     });
 
     constructor() {
@@ -73,12 +79,5 @@ export class NgxPopupDirective {
                 this.onClose();
                 break;
         }
-    }
-
-    protected onToggle(event: ToggleEvent): void {
-        this.expanded.set(event.newState === 'open');
-        this.expanded() ? this.element.focus() : this.element.blur();
-        this.element.ariaActiveDescendantElement = this.expanded() ? this.select.options().at(0)?.element || null : null;
-        if (!this.expanded()) this.select.onTouched();
     }
 }
