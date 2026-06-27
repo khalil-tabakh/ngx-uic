@@ -19,13 +19,13 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
     readonly multi = input(false as Multi<M>, {
         transform: (value: M) => {
             const multi = booleanAttribute(value) as Multi<M>;
-            this.value.set((multi ? [] : undefined) as ReturnType<typeof this.value>);
+            this.value.set((multi ? [] : null) as ReturnType<typeof this.value>);
             return multi;
         }
     });
 
     readonly disabled = model(false);
-    readonly value = model(undefined as Value<M, V>);
+    readonly value = model(null as Value<M, V>);
 
     readonly options = contentChildren(NgxOptionDirective, { descendants: true });
     readonly popup = contentChild.required(NgxPopupDirective);
@@ -34,7 +34,7 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
     readonly selected = computed(() => {
         if (this.multi()) {
             const selection = this.value() as unknown[];
-            return this.options().filter((option) => selection.includes(option.value()))
+            return this.options().filter((option) => selection.includes(option.value()));
         } else {
             const selection = this.value() as unknown;
             return this.options().find((option) => selection === option.value());
@@ -68,7 +68,7 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
                 const oldSelection = value as ReadonlyArray<unknown>;
                 return (oldSelection.length !== newSelection.length ? newSelection : oldSelection) as ReturnType<typeof this.value>;
             });
-        } else this.value.set(value as ReturnType<typeof this.value>);
+        } else this.value.set((value ?? null) as ReturnType<typeof this.value>);
         const newValue = this.value();
         if (newValue !== oldValue) {
             this.onChange(newValue);

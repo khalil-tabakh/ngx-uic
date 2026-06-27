@@ -15,7 +15,7 @@ export type Selected<M> = Multi<M> extends false
         : ReadonlyArray<NgxOptionDirective> | NgxOptionDirective | undefined;
 
 export type Value<M, V> = Multi<M> extends false
-    ? V | undefined
+    ? V | null
     : Multi<M> extends true
         ? V extends Array<infer T> ? ReadonlyArray<T> : never
         : unknown;
