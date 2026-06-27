@@ -11,12 +11,12 @@ let id = 0;
         '[aria-disabled]': 'disabled()',
         '[aria-selected]': 'selected()',
         '[attr.data-active]': 'active.value()',
-        '(click)': '!disabled() && onToggle()'
+        '(click)': '!disabled() && select.toggle(value())'
     }
 })
 export class NgxOptionDirective<T = unknown> {
     readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    private select = inject(NgxSelectComponent<boolean, unknown>);
+    protected select = inject(NgxSelectComponent<boolean, unknown>);
 
     readonly disabled = input(false, { transform: booleanAttribute });
     readonly value = input<T>();
@@ -45,22 +45,5 @@ export class NgxOptionDirective<T = unknown> {
 
     constructor() {
         this.element.id ||= `ngx-option-${id++}`;
-    }
-
-    protected onToggle(): void {
-        const oldSelection = this.select.value();
-        if (this.select.multi()) {
-            const selected = this.select.selected() as ReadonlyArray<NgxOptionDirective<T>>;
-            const selection = selected.includes(this) ? selected.filter((option) => option !== this) : selected.concat(this);
-            const options = this.select.options().filter((option) => selection.includes(option)); // Sort by initial order
-            if (this.value() === undefined) this.select.value.set([]);
-            else this.select.value.set(options.map((option) => option.value()));
-        } else this.select.value.set(this.value());
-        const newSelection = this.select.value();
-        if (newSelection !== oldSelection) {
-            this.select.onChange(newSelection);
-            this.element.dispatchEvent(new Event('input'));
-            this.element.dispatchEvent(new Event('change'));
-        }
     }
 }

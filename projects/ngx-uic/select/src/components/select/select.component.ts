@@ -1,4 +1,4 @@
-import { Component, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, inject, input, model } from '@angular/core';
+import { Component, ElementRef, Signal, booleanAttribute, computed, contentChild, contentChildren, effect, inject, input, model } from '@angular/core';
 import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { FormValueControl } from '@angular/forms/signals';
 import { NgxOptionDirective } from '../../directives/option/option.directive';
@@ -13,6 +13,7 @@ import { Multi, Selected, Value } from '../../utils/types.util';
     exportAs: 'ngxSelect'
 })
 export class NgxSelectComponent<M extends boolean | null | number | object | string | undefined, V> implements ControlValueAccessor, FormValueControl<Value<M, V>> {
+    private element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     private ngControl = inject(NgControl, { optional: true, self: true });
 
     readonly multi = input(false as Multi<M>, {
@@ -51,6 +52,29 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
 
     constructor() {
         if (this.ngControl && !this.ngControl.control) this.ngControl.valueAccessor = this;
+    }
+
+    toggle(value: unknown, force?: boolean): void {
+        const oldValue = this.value();
+        if (this.multi()) {
+            const selected = this.selected() as ReadonlyArray<NgxOptionDirective>;
+            const selection = new Set(selected.map((option) => option.value()));
+            force ??= !selection.has(value);
+            force ? selection.add(value) : selection.delete(value);
+            const newSelection = value !== null && value !== undefined
+                ? this.options().filter((option) => selection.has(option.value())).map((option) => option.value()) // Sort by initial order
+                : [];
+            this.value.update((value) => {
+                const oldSelection = value as ReadonlyArray<unknown>;
+                return (oldSelection.length !== newSelection.length ? newSelection : oldSelection) as ReturnType<typeof this.value>;
+            });
+        } else this.value.set(value as ReturnType<typeof this.value>);
+        const newValue = this.value();
+        if (newValue !== oldValue) {
+            this.onChange(newValue);
+            this.element.dispatchEvent(new Event('input'));
+            this.element.dispatchEvent(new Event('change'));
+        }
     }
 
     /* ControlValueAccessor */
