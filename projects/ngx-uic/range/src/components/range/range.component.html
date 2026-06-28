@@ -7,7 +7,7 @@
         }
     }
 </div>
-<div class="slider" (pointerdown)="onSliding($event)" #sliderRef>
+<div class="slider" #sliderRef>
     @let lower = type() === 'double' ? this.lower() : +this.value();
     @let upper = this.upper();
     @if (type() === 'double') {
