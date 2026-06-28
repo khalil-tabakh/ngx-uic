@@ -55,20 +55,30 @@ export class NgxSelectComponent<M extends boolean | null | number | object | str
     }
 
     toggle(value: unknown, force?: boolean): void {
+        value ??= null;
         const oldValue = this.value();
         if (this.multi()) {
             const selected = this.selected() as ReadonlyArray<NgxOptionDirective>;
             const selection = new Set(selected.map((option) => option.value()));
             force ??= !selection.has(value);
             force ? selection.add(value) : selection.delete(value);
-            const newSelection = value !== null && value !== undefined
+            const newSelection = value !== null
                 ? this.options().filter((option) => selection.has(option.value())).map((option) => option.value()) // Sort by initial order
                 : [];
             this.value.update((value) => {
                 const oldSelection = value as ReadonlyArray<unknown>;
                 return (oldSelection.length !== newSelection.length ? newSelection : oldSelection) as ReturnType<typeof this.value>;
             });
-        } else this.value.set((value ?? null) as ReturnType<typeof this.value>);
+        } else {
+            const selected = this.selected() as NgxOptionDirective | undefined;
+            let selection: unknown = selected?.value() ?? null;
+            force ??= selection !== value;
+            force ? (selection = value) : (selection = null);
+            const newSelection = value !== null
+                ? this.options().find((option) => selection === option.value())?.value() ?? null
+                : null;
+            this.value.set(newSelection);
+        }
         const newValue = this.value();
         if (newValue !== oldValue) {
             this.onChange(newValue);
