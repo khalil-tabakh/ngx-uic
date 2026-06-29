@@ -1,9 +1,9 @@
 {
     "name": "ngx-uic",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "author": "Khalil Tabakh",
     "license": "MIT",
-    "description": "A collection of reusable Angular components designed to simplify the development of user interfaces.",
+    "description": "A collection of accessible and reusable Angular UI components.",
     "homepage": "https://github.com/khalil-tabakh/ngx-uic",
     "repository": {
         "type": "git",
@@ -12,10 +12,11 @@
     "bugs": {
         "url": "https://github.com/khalil-tabakh/ngx-uic/issues"
     },
-    "keywords": ["angular", "components", "player", "range", "scroller", "ui"],
+    "keywords": ["angular", "aria", "components", "player", "range", "scroller", "select", "ui"],
     "peerDependencies": {
         "@angular/common": "^22.0.0",
         "@angular/core": "^22.0.0",
+        "@angular/forms": "^22.0.0",
         "dashjs": "^5.1.1",
         "hls.js": "^1.6.16"
     },
