@@ -6,7 +6,9 @@ The `NgxRangeModule` provides a reusable range slider component for Angular appl
 
 ✅ Single & Double slider modes
 
-🎯 Pointer-based interaction
+🎯 Pointer & keyboard interaction
+
+♿ WAI-ARIA compliant listbox pattern
 
 🔢 Flexible value configuration
 
@@ -21,6 +23,8 @@ The `NgxRangeModule` provides a reusable range slider component for Angular appl
 👆 Hover tracking
 
 🎨 Dynamic styling
+
+📝 `ControlValueAccessor` & `FormValueControl` support
 
 ## Components
 

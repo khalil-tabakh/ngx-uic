@@ -1,5 +1,7 @@
 # NgxRangeComponent
 
+`NgxRangeComponent` is a highly customizable range slider supporting both single- and double-thumb modes. It integrates seamlessly with Angular forms through both `ControlValueAccessor` and `FormValueControl`, supports keyboard and pointer interaction, and provides extensive styling and customization options.
+
 ## API
 
 ### Selectors
@@ -12,32 +14,32 @@
 
 ### Inputs
 
-| Name       | Type                   | Default     | Description                            | Note                                                                                         |
-| ---------- | ---------------------- | ----------- | -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `max`      | `number`               | `100`       | Maximum allowed value                  | Must be higher than `min`                                                                    |
-| `mark`     | `number \| number[]`   | `[]`        | Displays step markers on the track     | Could be _discrete_ (`number[]`) or _uniform_ (`number`) values                              |
-| `min`      | `number`               | `0`         | Minimum allowed value                  | Must be lower than `max`                                                                     |
-| `relative` | `number`               | `undefined` | Change progress bar starting point     | `type` must be `single`                                                                      |
-| `split`    | `number \| number[]`   | `[]`        | Split the track into multiple segments | Could be _discrete_ (`number[]`) or _uniform_ (`number`) values                              |
-| `step`     | `number \| number[]`   | `1`         | Allowed values                         | Could be _continuous_ (`0` or `NaN`), _discrete_ (`number[]`) or _uniform_ (`number`) values |
-| `type`     | `'single' \| 'double'` | `'single'`  | Range mode                             | `single` uses one thumb, `double` uses two                                                   |
+| Name       | Type                   | Default     | Description                                        | Note                                                                                         |
+| ---------- | ---------------------- | ----------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `max`      | `number`               | `100`       | Maximum allowed value                              | Must be higher than `min`                                                                    |
+| `mark`     | `number \| number[]`   | `[]`        | Displays step markers on the track                 | Could be _discrete_ (`number[]`) or _uniform_ (`number`) values                              |
+| `min`      | `number`               | `0`         | Minimum allowed value                              | Must be lower than `max`                                                                     |
+| `relative` | `number`               | `undefined` | Change progress bar starting point                 | `type` must be `single`                                                                      |
+| `split`    | `number \| number[]`   | `[]`        | Split the track into multiple segments             | Could be _discrete_ (`number[]`) or _uniform_ (`number`) values                              |
+| `step`     | `number \| number[]`   | `1`         | Allowed values                                     | Could be _continuous_ (`0` or `NaN`), _discrete_ (`number[]`) or _uniform_ (`number`) values |
+| `stride`   | `number`               | `1`         | Number of steps moved by each keyboard arrow press | If `step` is _continuous_, `stride` defines the step size used for keyboard interaction      |
+| `type`     | `'single' \| 'double'` | `'single'`  | Range mode                                         | `single` uses one thumb, `double` uses two                                                   |
 
-💡 All numeric inputs with the `number` type accept numeric `string` values.
+💡 `number` inputs also accept numeric `string` values.
 
 ### Models
 
-| Name    | Type     | Default | Description   | Note                    |
-| ------- | -------- | ------- | ------------- | ----------------------- |
-| `lower` | `number` | `25`    | Lower value   | `type` must be `double` |
-| `upper` | `number` | `75`    | Upper value   | `type` must be `double` |
-| `value` | `number` | `50`    | Current value | `type` must be `single` |
+| Name       | Type                          | Default          | Description                               | Note                                  |
+| ---------- | ----------------------------- | ---------------- | ----------------------------------------- | ------------------------------------- |
+| `disabled` | `boolean`                     | `false`          | Disables pointer and keyboard interaction |                                       |
+| `value`    | `number` / `[number, number]` | `50` / `[25,75]` | Current slider value                      | The type depends on the selected mode |
 
 ### Outputs
 
-| Name     | Type    | Note                  |
-| -------- | ------- | --------------------- |
-| `change` | `Event` | Emits on pointer up   |
-| `input`  | `Event` | Emits on pointer move |
+| Name     | Type    | Note                                       |
+| -------- | ------- | ------------------------------------------ |
+| `change` | `Event` | Fired continuously while the value changes |
+| `input`  | `Event` | Fired when a value change is committed     |
 
 ### Queries
 
@@ -102,32 +104,60 @@ import { NgxRangeModule } from 'ngx-uic/range';
     styleUrl: './app.component.scss',
 })
 export class AppComponent {
-    onChange(...values: number[]): void {
-        console.log(...values);
-    }
+    filter = signal({ price: 0 })
+    price = signal(0);
+    priceRange = signal([10, 100]);
 
-    onInput(...values: number[]): void {
-        console.log(...values);
-    }
+    filterSignalForm = form()
 }
 ```
 
 ### Single thumb
 
+```ts
+volume = signal(0);
+```
 ```html
-<ngx-range type="single" min="20" max="80" value="60" step="0" (change)="onChange(range.value())" #range />
+<ngx-range min="0" max="1" step="0.01" [(value)]="volume" />
 ```
 
 ### Double thumb
 
+```ts
+height = signal([150, 180]);
+```
 ```html
-<ngx-range type="double" min="10" max="90" lower="20" upper="80" [step]="[10, 40, 90]" (input)="onInput(range.lower(), range.upper())" #range />
+<ngx-range type="double" min="100" max="200" [(value)]="height" />
 ```
 
 ### Relative progress
 
+```ts
+temperature = signal(0);
+```
 ```html
-<ngx-range relative="50" />
+<ngx-range min="-20" max="20" relative="0" [step]="[-8, -6, -2, 0, 3, 4, 15]" [(value)]="temperature" />
+```
+
+### Reactive form
+
+```ts
+age = new FormControl(5, { nonNullable: true });
+```
+```html
+<ngx-range min="5" max="100" [formControl]="age" />
+```
+
+### Signal form
+
+```ts
+filters = form(signal({ price: [0, 100] as [number, number] }), (schema) => {
+    min(schema.price as unknown as SchemaPath<number>, 0),
+    max(schema.price as unknown as SchemaPath<number>, 1000)
+});
+```
+```html
+<ngx-range type="double" [formField]="filters.price" />
 ```
 
 ### Marked track
@@ -144,7 +174,31 @@ export class AppComponent {
 <ngx-range [split]="[50]" /> <!-- Only one split will be displayed on the value 50 -->
 ```
 
-## Accessibility Notes
+### Keyboard stride
 
-* Uses native `input[type=range]` internally (hidden) for semantic value handling
-* Pointer events support mouse, touch, and pen
+```html
+<ngx-range step="5" stride="2" />
+```
+
+## Accessibility
+
+### Keyboard
+
+The component follows the ARIA slider pattern:
+
+| Key  | Action          |
+| ---- | --------------- |
+| ← ↓  | Decrease value  |
+| → ↑  | Increase value  |
+| Home | Jump to minimum |
+| End  | Jump to maximum |
+
+In double-slider mode, keyboard navigation automatically transfers focus to the opposite thumb when attempting to cross it.
+
+### Pointer
+
+* Mouse
+* Pen
+* Touch
+
+are fully supported.
